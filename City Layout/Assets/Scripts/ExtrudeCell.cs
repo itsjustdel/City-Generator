@@ -6,11 +6,11 @@ public class ExtrudeCell : MonoBehaviour {
     public float depth = 1f;
     public float scale = .9f;
     public bool uniqueVertices = false;
-    public bool curveEdges = true;
+    public bool curveEdges = false;
 
     public Vector3 centroid;
     public GameObject extrudedCell;//save for tidy up later, skyscraper script moves postions around
-    public bool doExtrudeAnimation = false;
+    public bool doExtrudeAnimation = true;
     public float totalTimeForAnimation = 2f;
     bool finishedAnimating = false;
     bool showTints = false;
