@@ -5,16 +5,22 @@ using System.Linq;
 
 public class Pavement : MonoBehaviour {
 
-    public float depth = 3f; 
-    
+    public float depth = 3f;
+    public float borderSize = 2f;
+
     public float cornerSizeScaler = .1f;
     public float maxCornerSize = 3f;
     public float curveAccuracyCorners = 100f;//making this lower makes hexagonny style shapes
     public float curveStepSize = .5f;
     BezierSpline bezierForCorners;
+    public GameObject pavement;
+    // Use this for initialization
+    private void Awake()
+    {
+        enabled = false;
+    }
 
-	// Use this for initialization
-	void Start ()
+    public void Start ()
     {
         bezierForCorners = gameObject.AddComponent<BezierSpline>();
 
@@ -28,23 +34,70 @@ public class Pavement : MonoBehaviour {
         List<Vector3> ringPoints = RingPoints(edgePoints, curvedCornerPoints);
 
         //game objects
-        GameObject pavement = TriangulateRing(ringPoints, false);
+        pavement = TriangulateRing(ringPoints, false);
+        pavement.name = "Curved Edge Cell";
+        pavement.transform.parent = transform;
         pavement.transform.position = transform.position + (Vector3.up * depth);
 
         GameObject extrusion = new GameObject();
+        extrusion.transform.parent = pavement.transform;
+        extrusion.name = "Extrusion for Curved Edge Cell";
         extrusion.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Ground") as Material;
         MeshFilter meshFilter = extrusion.AddComponent<MeshFilter>();
         meshFilter.mesh = Extrude(ringPoints, depth, 1f, true);
         extrusion.transform.position = transform.position;
 
         //work out miters
-        Miters(cornerPoints);
-    
+        List<Vector3> miters = Miters(cornerPoints, borderSize);
+        PositionsBetweenCorners(miters);
+
+    }    
+
+    List<Vector3> PositionsBetweenCorners(List<Vector3> miters)
+    {
+        List<Vector3> positions = new List<Vector3>();
+
+        //make full loop
+        miters.Add(miters[0]);
+
+        // we want to roughly place items by variable step
+        float step = 5f;
+        //meaning that we should try to fit in as many points as we can every "step" between the miter points
+        
+        //
+        //run between border points and create positions
+        //how often a position is made
+
+        for (int i = 0; i < miters.Count; i++)
+        {
+            if (i == 0)
+                continue;
+
+            float distance = Vector3.Distance(miters[i - 1], miters[i]);
+            //how many to do
+            float amount = (distance / step);
+            float evenStep = distance / (int)amount;
+            
+            Vector3 dir = (miters[i] - miters[i -1]).normalized;
+            
+            //this loop will place the points and spread them out evenly
+            for (float j = 0; j < distance; j+= evenStep)
+            {
+                Vector3 p = miters[i-1] + dir * (j );
+
+                //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                // c.transform.position = p + transform.position + Vector3.up*depth;
+                //c.name = "p0";
+                //Destroy(c, 5);
+
+                positions.Add(p);
+            }
+
+        }
+        return positions;
     }
 
-    
-
-    List<Vector3> Miters(List<Vector3> ringPoints)
+    List<Vector3> Miters(List<Vector3> ringPoints, float borderSize)
     {
         List<Vector3> miters = new List<Vector3>();
 
@@ -57,10 +110,10 @@ public class Pavement : MonoBehaviour {
             int nextInt = i + 1;
             int nextNextInt = i + 2;
 
-            if (prevInt <= 0)
+            if (prevInt < 0)
             {
                 //if central point, move to last //last point in list is same as first, so actual last is -2
-                prevInt = ringPoints.Count - 2;
+                prevInt += ringPoints.Count -1;
             }
             if (nextInt >= ringPoints.Count)
             {
@@ -72,16 +125,12 @@ public class Pavement : MonoBehaviour {
                 nextNextInt -= ringPoints.Count;
             }
 
-
-
-
             Vector3 p0 = ringPoints[prevInt];
             Vector3 p1 = ringPoints[thisInt];
             Vector3 p2 = ringPoints[nextInt];
             Vector3 p3 = ringPoints[nextNextInt];
 
             //so order around cell is previous,p0,p1,next
-            float borderSize = 3f;
 
             Vector3 miterDirection0 = MiterDirection(p0, p1, p2,borderSize);
             Vector3 miterDirection1 = MiterDirection(p1, p2, p3, borderSize);
@@ -91,7 +140,13 @@ public class Pavement : MonoBehaviour {
                 Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.red);
             else
                 Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.blue);
-           
+
+
+            Vector3 m0 = p1 + miterDirection0 * -borderSize;
+            Vector3 m1 = p1 + miterDirection0 * -borderSize;
+            miters.Add(m0);
+            //miters.Add(m1);
+
         }
 
         return miters;

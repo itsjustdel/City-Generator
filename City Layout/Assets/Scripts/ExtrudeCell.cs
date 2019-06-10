@@ -4,9 +4,9 @@ using System.Collections.Generic;
 public class ExtrudeCell : MonoBehaviour {
 
     public float depth = 1f;
-    public float scale = .9f;
+    public float scale = .9f;//.9f;
     public bool uniqueVertices = false;
-    public bool curveEdges = false;
+    public bool curveEdges = true;
 
     public Vector3 centroid;
     public GameObject extrudedCell;//save for tidy up later, skyscraper script moves postions around
@@ -26,7 +26,6 @@ public class ExtrudeCell : MonoBehaviour {
         Realign();
 
         Scale();
-
         
         //centroid += Vector3.up * depth;
 
@@ -44,7 +43,7 @@ public class ExtrudeCell : MonoBehaviour {
         extrudedCell.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Ground") as Material;
 
         //don't relly need this id we are curving
-        extrudedCell.AddComponent<MeshFilter>().mesh = Extrude(GetComponent<MeshFilter>().mesh, depth, scale, uniqueVertices);
+        
 
         
 
@@ -52,6 +51,7 @@ public class ExtrudeCell : MonoBehaviour {
 
         if (doExtrudeAnimation)
         {
+            extrudedCell.AddComponent<MeshFilter>().mesh = Extrude(GetComponent<MeshFilter>().mesh, depth, scale, uniqueVertices);
             //extrudedCell.transform.localScale = Vector3.zero;
             StartCoroutine(ScaleWithTime(extrudedCell.transform, totalTimeForAnimation));
         }
@@ -62,6 +62,11 @@ public class ExtrudeCell : MonoBehaviour {
 
             Pavement pavement = gameObject.AddComponent<Pavement>();
             pavement.depth = depth;
+            
+            pavement.Start();
+            //animate new curved edge cell
+            
+            StartCoroutine(ScaleWithTime(pavement.pavement.transform, totalTimeForAnimation));
         }
 
         if(showTints)

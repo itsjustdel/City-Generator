@@ -130,11 +130,12 @@ MonoBehaviour:
   weldCells: 0
   weldThreshold: 10
   makeSkyscraperTraditional: 1
-  doBuildControl: 1
+  doBuildControl: 0
   threshold: 2
   yardPoints: []
   density: 4
   cells: []
+  cellsToAdd: []
   adjacentCellsCount: 0
   counter: 0
 --- !u!114 &114639802113931778
@@ -153,8 +154,8 @@ MonoBehaviour:
   building: 0
   builtSoFar: 0
   export: 0
-  soloBuildings: 1
+  soloBuildings: 0
   individually: 0
-  simultaneously: 0
+  simultaneously: 1
   readyToBuild: 0
   secondsToWaitTilNext: 1

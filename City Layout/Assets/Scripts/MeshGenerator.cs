@@ -63,6 +63,8 @@ public class MeshGenerator : MonoBehaviour {
     public int density = 5;
 
     public List<GameObject> cells = new List<GameObject>();
+    public List<GameObject> cellsToAdd = new List<GameObject>();
+   // public List<GameObject> cellsToRemove = new List<GameObject>();
     //public List<List<GameObject>> adjacentCells = new List<List<GameObject>>();//moved t0 saving on each cell with AdjacentCells class
     public int adjacentCellsCount = 0;
 
@@ -251,7 +253,34 @@ public class MeshGenerator : MonoBehaviour {
 
            
         }
+
+
+            //cut cells up
+            //CalculateAdjacents();
+            //create a list of edges for each cell
+            //Edges();adding as we go in splitCells() below
+
+        SplitCells();
+     
+        
+        RemoveSmallEdges();
+        ReMesh();
+        Edges();
+
+
         CalculateAdjacents();
+        //we need to ..
+       //// CalculateAdjacents();
+        //make this new polygon with no small edges in to a new mesh
+        //ReMesh();
+        
+       // Edges();
+
+        //we need to know which cells are adjacent which
+       // CalculateAdjacents();//CallAdjacents();
+
+        
+
         SetPalletes();
 
         AddToCells();
@@ -264,9 +293,6 @@ public class MeshGenerator : MonoBehaviour {
         Edges();
         RemoveSmallEdges();
         
-        
-
-
 
         ReMesh();
         
@@ -280,6 +306,302 @@ public class MeshGenerator : MonoBehaviour {
         yield break;
     }
 
+    void SplitCells()
+    {
+        //we can split some of the voronoi cells for smaller internal patterns
+        List<GameObject> toRemove = new List<GameObject>();
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            //need to add adjacent cells stuff to new cells
+            SplitCell splitCell = cells[i].AddComponent<SplitCell>();
+            splitCell.meshGenerator = this;
+            splitCell.Start();
+        }
+
+        //split cell script populates toAdd list so we dont add as we are iterating through cells list
+        //add now
+
+        cells.Clear();
+
+        foreach (GameObject go in cellsToAdd)
+            cells.Add(go);
+    }
+
+    void ReMesh()
+    {
+
+        
+        for (int i = 0; i < cells.Count; i++)
+        {
+            Vector3[] vertices = cells[i].GetComponent<MeshFilter>().mesh.vertices;
+
+
+            List<Vector3> newVertices = new List<Vector3>();
+            List<int> triangles = new List<int>();
+
+            for (int j = 0; j < vertices.Length; j++)
+            {
+                //we are looking for welded vertices
+                if (j < 2)
+                {
+                    //always add [0] (centre) and 1(we will compare this in the next iteration)
+                    newVertices.Add(vertices[j]);
+                }
+                else if (Vector3.Distance(vertices[j], vertices[j - 1]) <= tolerance)//was ==
+                {
+                    //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    //  c.transform.position = vertices[j];
+                    //  c.name = "match";
+                    //  c.transform.parent = cells[i].transform;
+
+                    //don't add this duplicate
+                    continue;
+
+                }
+                else
+                {
+                    if (Vector3.Distance(vertices[j], newVertices[1]) > tolerance)//can loop, so catch if it tries to weld last to first (instead !=. doing distance)
+                        newVertices.Add(vertices[j]);
+                }
+            }
+
+            //create new mesh
+
+
+            for (int j = 0; j < newVertices.Count; j++)
+            {
+                if (j < 2) continue;
+
+                triangles.Add(j);
+                triangles.Add(0);
+                triangles.Add(j - 1);
+            }
+            //add last
+            triangles.Add(1);
+            triangles.Add(0);
+            triangles.Add(newVertices.Count - 1);
+
+            Mesh mesh = new Mesh();
+            mesh.vertices = newVertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.RecalculateNormals();
+
+            bool test = false;
+            if (test)
+            {
+                //create test body
+                GameObject cell = new GameObject();
+                cell.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("White") as Material;
+
+                cell.AddComponent<MeshFilter>().sharedMesh = mesh;
+            }
+            else
+            {
+                //replace cell's mesh with new welded one
+                cells[i].GetComponent<MeshFilter>().mesh = mesh;
+                //also replace extrude cell's "original" mesh with this one
+
+                // Debug.Log("mesh count before update");
+             
+            }
+        }
+
+    }
+
+
+    void RemoveSmallEdges()
+    {
+
+        //now we need to look for small edges
+        for (int a = 0; a < cells.Count; a++)
+        {
+            List<List<int>> edges = cells[a].GetComponent<AdjacentCells>().edges;
+            Vector3[] vertices = cells[a].GetComponent<MeshFilter>().mesh.vertices;
+            for (int i = 0; i < edges.Count; i++)
+            {
+                Vector3 p0 = vertices[edges[i][0]];
+                Vector3 p1 = vertices[edges[i][1]];
+
+                float distance = Vector3.Distance(p0, p1);
+                if (distance < minEdgeSize)
+                {
+
+                    /*
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                     c.transform.position = p0;
+                     c.name = a.ToString() + " " + i.ToString() + " 0 first";
+                     c.transform.parent = cells[a].transform;
+                     c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                     c.transform.position = p1;
+                     c.name = a.ToString() + " " + i.ToString() + " 1 ";
+                     */
+                    //find all other vertices which equal this
+
+                    //add this
+                    List<List<int>> toMove = new List<List<int>>();
+                    toMove.Add(new List<int>() { a, i });
+                    for (int b = 0; b < cells.Count; b++)
+                    {
+                        if (a == b)
+                            continue;
+
+                        Vector3[] otherVertices = cells[b].GetComponent<MeshFilter>().mesh.vertices;
+                        List<List<int>> otherEdges = cells[b].GetComponent<AdjacentCells>().edges;
+                        for (int j = 0; j < otherEdges.Count; j++)
+                        {
+                            Vector3 q0 = otherVertices[otherEdges[j][0]];
+                            Vector3 q1 = otherVertices[otherEdges[j][1]];
+
+                            // if (p0 == q0 && p1 == q1 || p0 == q1 && p1 == q0) ////////////working (p0 == q0 && p1 == q1)
+                            if (Vector3.Distance(p0, q0) < tolerance && Vector3.Distance(p1, q1) < tolerance
+                                || Vector3.Distance(p0, q1) < tolerance && Vector3.Distance(p1, q0) < tolerance)
+                            {
+                                //we have a match
+
+                                // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                // c.transform.position = q0;
+                                //  c.name = b.ToString() + " " + j.ToString() + " 0 second";
+                                //  c.transform.parent = cells[b].transform;
+
+                                toMove.Add(new List<int>() { b, j });
+                                //c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                //c.transform.position = q1;
+                                //c.name = b.ToString() + " " + j.ToString() + " 1 ";
+                                //  Vector3 movedPos = q0 + Vector3.up * 10f;
+
+                                //  otherVertices[otherEdges[j][0]] = movedPos;
+                                //  cells[b].GetComponent<MeshFilter>().mesh.vertices = otherVertices;
+                            }
+                        }
+
+                        for (int x = 0; x < toMove.Count; x++)
+                        {
+                            Vector3[] verticesToMove = cells[toMove[x][0]].GetComponent<MeshFilter>().mesh.vertices;
+                            List<List<int>> edgesToMove = cells[toMove[x][0]].GetComponent<AdjacentCells>().edges;
+
+                            p0 = verticesToMove[edgesToMove[toMove[x][1]][0]];
+                            p1 = verticesToMove[edgesToMove[toMove[x][1]][1]];
+
+                            Vector3 centre = Vector3.Lerp(p0, p1, 0.5f);
+                            //parallel lists - other fixes we need to make
+                            List<GameObject> cellsToFix = new List<GameObject>();
+                            List<int> vertsToFix = new List<int>();
+                            List<Vector3> targetsForFix = new List<Vector3>();
+
+                            //there may be solo vertices still not moved, search for them now
+
+                            for (int y = 0; y < cells.Count; y++)
+                            {
+                                //skip our own cell
+                                if (cells[toMove[x][0]] == cells[y])
+                                    continue;
+
+                                //List<List<int>> edges = cells[x].GetComponent<Wall>().edges;
+                                Vector3[] verticesOther = cells[y].GetComponent<MeshFilter>().mesh.vertices;
+
+                                for (int z = 0; z < verticesOther.Length; z++)
+                                {
+                                    if (verticesOther[z] == p0 || verticesOther[z] == p1)
+                                    {
+                                        //            vertices[i] = centre;//remember and mvoe later
+                                        cellsToFix.Add(cells[y]);
+                                        vertsToFix.Add(z);
+                                        targetsForFix.Add(centre);
+
+                                    }
+                                }
+
+                            }
+
+
+                            //using parallel list tomove points
+                            for (int y = 0; y < cellsToFix.Count; y++)
+                            {
+
+                                Vector3[] verticesToFix = cellsToFix[y].GetComponent<MeshFilter>().mesh.vertices;
+                                verticesToFix[vertsToFix[y]] = targetsForFix[y];
+                                cellsToFix[y].GetComponent<MeshFilter>().mesh.vertices = verticesToFix;
+
+                                /*GameObject c0 = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                                c0.transform.position = targetsForFix[y];
+                                c0.transform.parent = cellsToFix[y].transform;
+                                c0.name = "solo";
+                                */
+                            }
+
+
+                            /*
+                            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = p0;
+                            c.transform.parent = cells[toMove[x][0]].transform;
+                            c.name = "0";
+
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = p1;
+                            c.name = "1";
+                            c.transform.parent = cells[toMove[x][0]].transform;
+
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = centre;
+                            c.name = "c";
+                            c.transform.parent = cells[toMove[x][0]].transform;
+
+                        */
+
+                            verticesToMove[edgesToMove[toMove[x][1]][0]] = centre;
+                            verticesToMove[edgesToMove[toMove[x][1]][1]] = centre;
+
+                            // now we use these edges to make a new mesh
+
+                            cells[toMove[x][0]].GetComponent<MeshFilter>().mesh.vertices = verticesToMove;
+
+                        }
+                        //move first pos
+                        //   Vector3 movedPosA = p0 + Vector3.up * 10;
+                        //  vertices[edges[i][0]] = movedPosA;
+                        //  cells[a].GetComponent<MeshFilter>().mesh.vertices = vertices;
+                    }
+
+
+                }
+            }
+        }
+    }
+
+
+    void Edges()
+    {
+        //makes list of edges for each cell and removes any that are too small
+
+        for (int a = 0; a < cells.Count; a++)
+        {
+            //hold edge info in wall script in cell 
+            if (cells[a].GetComponent<AdjacentCells>() == null)
+                cells[a].AddComponent<AdjacentCells>();
+
+            AdjacentCells aJ = cells[a].GetComponent<AdjacentCells>();
+
+            //this will figure out edges and save them on the script
+
+            aJ.Edges();
+        }
+
+        //now we have worked out all edges, find adjacent edges
+        for (int a = 0; a < cells.Count; a++)
+        {
+            cells[a].GetComponent<AdjacentCells>().FindSharedEdges();
+        }
+
+    }
+
+    void CallAdjacents()
+    {
+        for (int i = 0; i < cells.Count; i++)
+        {
+            cells[i].GetComponent<AdjacentCells>().FindSharedEdges();
+        }
+    }
 
     float FindShortestEdgeDistance(DualGraph dualGraph)
     {
@@ -697,10 +1019,13 @@ public class MeshGenerator : MonoBehaviour {
 
             //adjacentCells.Add(adjacents); //removing
             //add to list and save it on game object. Doing it this way allows us to hot reload, if we save it all in a list here, it won't serialize
+            AdjacentCells aJ = null;
+            if(cells[i].GetComponent<AdjacentCells>() == null)
+                aJ = cells[i].AddComponent<AdjacentCells>();
+            else
+                aJ = cells[i].GetComponent<AdjacentCells>();
 
-            AdjacentCells aj = cells[i].AddComponent<AdjacentCells>();
-            aj.adjacentCells = adjacents;
-            
+            aJ.adjacentCells = adjacents;
         }
     }
 
