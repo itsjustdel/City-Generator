@@ -159,3 +159,4 @@ MonoBehaviour:
   simultaneously: 1
   readyToBuild: 0
   secondsToWaitTilNext: 1
+  respawnWhenDone: 1

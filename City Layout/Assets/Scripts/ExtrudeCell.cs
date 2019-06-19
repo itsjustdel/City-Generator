@@ -4,14 +4,14 @@ using System.Collections.Generic;
 public class ExtrudeCell : MonoBehaviour {
 
     public float depth = 1f;
-    public float scale = .9f;//.9f;
+    public float scale = .9f;
     public bool uniqueVertices = false;
     public bool curveEdges = true;
 
     public Vector3 centroid;
     public GameObject extrudedCell;//save for tidy up later, skyscraper script moves postions around
     public bool doExtrudeAnimation = true;
-    public float totalTimeForAnimation = 2f;
+    public float totalTimeForAnimation = .2f;
     bool finishedAnimating = false;
     bool showTints = false;
     private void Awake()
@@ -25,40 +25,31 @@ public class ExtrudeCell : MonoBehaviour {
        
         Realign();
 
-        Scale();
-        
-        //centroid += Vector3.up * depth;
+        ScaleToMiter();
 
-        //make new object for extruded cell
-        extrudedCell = new GameObject();
-        extrudedCell.name = "Extruded Cell";
-        extrudedCell.transform.position = transform.position;
-        extrudedCell.transform.parent = transform;
 
-        //extrudedCell.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Ground2") as Material;
-        PaletteInfo pI = GetComponent<PaletteInfo>();
-       // if (pI != null)
-       //     extrudedCell.AddComponent<MeshRenderer>().sharedMaterial = pI.palette[0].material;
-       // else
-        extrudedCell.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Ground") as Material;
-
-        //don't relly need this id we are curving
-        
-
-        
+        return;
 
         GetComponent<MeshRenderer>().enabled = false;
 
-        if (doExtrudeAnimation)
+        if (doExtrudeAnimation && !curveEdges)
         {
+
+            //make new object for extruded cell
+            extrudedCell = new GameObject();
+            extrudedCell.name = "Extruded Cell";
+            extrudedCell.transform.position = transform.position;
+            extrudedCell.transform.parent = transform;
+            extrudedCell.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Ground") as Material;
+
             extrudedCell.AddComponent<MeshFilter>().mesh = Extrude(GetComponent<MeshFilter>().mesh, depth, scale, uniqueVertices);
             //extrudedCell.transform.localScale = Vector3.zero;
             StartCoroutine(ScaleWithTime(extrudedCell.transform, totalTimeForAnimation));
         }
 
-        if(curveEdges)
+        if(curveEdges && doExtrudeAnimation)//no option for non animated curved!
         {
-            extrudedCell.GetComponent<MeshRenderer>().enabled = false;
+           // extrudedCell.GetComponent<MeshRenderer>().enabled = false;
 
             Pavement pavement = gameObject.AddComponent<Pavement>();
             pavement.depth = depth;
@@ -73,8 +64,14 @@ public class ExtrudeCell : MonoBehaviour {
             ShowTints();
 
 
-        
-            
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        for (int i = 0; i < vertices.Length; i++)
+        {
+         //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+          //  c.transform.position = vertices[i] + transform.position;
+          //  c.name = i.ToString();
+
+        }
 
         //FixMeshCollider(extrudedCell);//needed?
         
@@ -168,7 +165,7 @@ public class ExtrudeCell : MonoBehaviour {
         }
     }
 
-    void Scale()
+    void ScaleToCenter()
     {
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] verts = mesh.vertices;
@@ -180,7 +177,37 @@ public class ExtrudeCell : MonoBehaviour {
 
         mesh.vertices = verts;
     }
+    void ScaleToMiter()
+    {
+       // GetComponent<MeshRenderer>().enabled = true;
 
+        //miter points (directions) give us a nice halfway point in between a corner
+        //we already worked them out when we calculating the edges for the cells - they are saved on adjacent cells script
+        List<List<Vector3>> miters = GetComponent<AdjacentCells>().miters;
+        //miters list corresponds to edges list
+        List<List<int>> edges = GetComponent<AdjacentCells>().edges;
+        //edges list corresponds to vertices
+        Mesh mesh = GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+
+        //so, run through each edge  and move the vertices towards the miter direction.
+        //This will give us a nicely scaled shape
+        for (int i = 0; i < edges.Count; i++)
+        {
+            Vector3 p0 =vertices[ edges[i][0] ];
+            Vector3 miter0 = miters[i][0];
+
+           // Debug.DrawLine(p0 + transform.position, p0 + transform.position + miter0, Color.green);
+            //Debug.Break();
+
+            p0 += miter0 * 1f;//var
+            vertices[edges[i][0]] = p0;
+
+        }
+
+        mesh.vertices = vertices;
+        mesh.RecalculateBounds();
+    }
     void Realign()
     {
         
@@ -261,9 +288,9 @@ public class ExtrudeCell : MonoBehaviour {
         }
         foreach (Vector3 v3 in vertsList)
         {
-         //   GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-         //   cube.transform.position = v3;
-         //   cube.transform.localScale *= 0.1f;
+        //   GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+          //  cube.transform.position = v3;
+            //cube.transform.localScale *= 0.1f;
         }
 
         Mesh newMesh = new Mesh();

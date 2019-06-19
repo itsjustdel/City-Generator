@@ -254,55 +254,45 @@ public class MeshGenerator : MonoBehaviour {
            
         }
 
-
-            //cut cells up
-            //CalculateAdjacents();
-            //create a list of edges for each cell
-            //Edges();adding as we go in splitCells() below
-
-        SplitCells();
-     
+        //
+        //take small corners out to simplify the shape
+        Edges();
+        RemoveSmallEdges();//testing early in pipeline
         
-        RemoveSmallEdges();
-        ReMesh();
+        //
+
+
+        
+        CalculateAdjacents();
         Edges();
 
 
+
+        
+        //SplitCells();
+       // ReMesh(true);
+        yield break;
+        
+        
+        //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
+        Edges();
         CalculateAdjacents();
-        //we need to ..
-       //// CalculateAdjacents();
-        //make this new polygon with no small edges in to a new mesh
-        //ReMesh();
-        
-       // Edges();
-
-        //we need to know which cells are adjacent which
-       // CalculateAdjacents();//CallAdjacents();
 
         
 
+        //MergeCells();
+        
+
+        Edges();//merge cells might cover this
+        //work out which cells each cell shares any points with - save results on Adjacent Edge script
+        
+        //choose colours for each cell
         SetPalletes();
 
+        
+        //add ...
         AddToCells();
-
-        /*
-        AddExtrudes();
-        AddAdjacents();
-
-        CalculateAdjacents();
-        Edges();
-        RemoveSmallEdges();
-        
-
-        ReMesh();
-        
-        //refind adjacents
-        CalculateAdjacents();
-        //redo edges now we have removed some
-        Edges();//and shared eges
-        */
-        //red do the meshes using the new edges
-        // yield return new WaitForEndOfFrame();
+               
         yield break;
     }
 
@@ -310,11 +300,13 @@ public class MeshGenerator : MonoBehaviour {
     {
         //we can split some of the voronoi cells for smaller internal patterns
         List<GameObject> toRemove = new List<GameObject>();
+        //create temp list to iterate through as we will add to the main cells list as we are building
+        List<GameObject> originalCells = new List<GameObject>(cells);
 
-        for (int i = 0; i < cells.Count; i++)
+        for (int i = 0; i < originalCells.Count; i++)
         {
             //need to add adjacent cells stuff to new cells
-            SplitCell splitCell = cells[i].AddComponent<SplitCell>();
+            SplitCell splitCell = originalCells[i].AddComponent<SplitCell>();
             splitCell.meshGenerator = this;
             splitCell.Start();
         }
@@ -322,23 +314,44 @@ public class MeshGenerator : MonoBehaviour {
         //split cell script populates toAdd list so we dont add as we are iterating through cells list
         //add now
 
-        cells.Clear();
+      //  cells.Clear();
 
-        foreach (GameObject go in cellsToAdd)
-            cells.Add(go);
+        //foreach (GameObject go in cellsToAdd)
+          //  cells.Add(go);
     }
 
-    void ReMesh()
+   
+    void MergeCells()
     {
+        //add scripts to random cells here
 
-        
+        int r = UnityEngine.Random.Range(0, cells.Count);
+        cells[r].AddComponent<MergeCell>().Start();
+        //cells[r].AddComponent<MergeCell>().Start();
+        //cells[r].AddComponent<MergeCell>().Start();
+
         for (int i = 0; i < cells.Count; i++)
         {
+            //cells[i].AddComponent<MergeCell>().Start();
+
+            ///if (i > 0)
+               // break;//tests
+        }
+    }
+
+    void ReMesh(bool enableRenderer)
+    {        
+        for (int i = 0; i < cells.Count; i++)
+        {
+
+            if (enableRenderer)
+                cells[i].GetComponent<MeshRenderer>().enabled = true;
+
             Vector3[] vertices = cells[i].GetComponent<MeshFilter>().mesh.vertices;
 
 
             List<Vector3> newVertices = new List<Vector3>();
-            List<int> triangles = new List<int>();
+            
 
             for (int j = 0; j < vertices.Length; j++)
             {
@@ -368,7 +381,7 @@ public class MeshGenerator : MonoBehaviour {
 
             //create new mesh
 
-
+            List<int> triangles = new List<int>();
             for (int j = 0; j < newVertices.Count; j++)
             {
                 if (j < 2) continue;
@@ -567,6 +580,11 @@ public class MeshGenerator : MonoBehaviour {
                 }
             }
         }
+
+        //create meshes again
+        ReMesh(true);
+        //and work out edges for each cell again now we have changed them
+        Edges();
     }
 
 
@@ -590,7 +608,7 @@ public class MeshGenerator : MonoBehaviour {
         //now we have worked out all edges, find adjacent edges
         for (int a = 0; a < cells.Count; a++)
         {
-            cells[a].GetComponent<AdjacentCells>().FindSharedEdges();
+          //  cells[a].GetComponent<AdjacentCells>().FindSharedEdges(); //using?
         }
 
     }
@@ -975,7 +993,7 @@ public class MeshGenerator : MonoBehaviour {
         // yield break;
     }
 
-    void CalculateAdjacents()
+    public void CalculateAdjacents()
     {
         //work out which cells are adjacent to each cell, save in a list
         for (int i = 0; i < cells.Count; i++)
@@ -983,52 +1001,11 @@ public class MeshGenerator : MonoBehaviour {
             //set layer here
             cells[i].layer = LayerMask.NameToLayer("Cells");
 
-            List<GameObject> adjacents = new List<GameObject>();
-
-            Vector3[] thisVertices = cells[i].GetComponent<MeshFilter>().mesh.vertices;
-            for (int j = 0; j < cells.Count; j++)
-            {
-                //don't check own cell
-                if (i == j)
-                    continue;
-
-                Vector3[] otherVertices = cells[j].GetComponent<MeshFilter>().mesh.vertices;
-                int matches = 0;
-
-                for (int a = 0; a < thisVertices.Length; a++)
-                {
-                    for (int b = 0; b < otherVertices.Length; b++)
-                    {
-                        //if we have a match, add "other" cell to a list of adjacents for this cell
-                        if (Vector3.Distance(thisVertices[a], otherVertices[b]) < tolerance) //opt0- think this is ok as ==
-                        {
-                            //adjacents.Add(cells[j]); //making so we need two points for an adjacent cell
-
-                            //force out of the loops
-                            //a = thisVertices.Length;
-
-
-                            matches++;
-                        }
-                    }
-                }
-
-                if (matches > 1)//means if cell mathces one ponton a corner, we ignore. it has to be a solid edge
-                    adjacents.Add(cells[j]);
-            }
-
-            //adjacentCells.Add(adjacents); //removing
-            //add to list and save it on game object. Doing it this way allows us to hot reload, if we save it all in a list here, it won't serialize
-            AdjacentCells aJ = null;
-            if(cells[i].GetComponent<AdjacentCells>() == null)
-                aJ = cells[i].AddComponent<AdjacentCells>();
-            else
-                aJ = cells[i].GetComponent<AdjacentCells>();
-
-            aJ.adjacentCells = adjacents;
+            AdjacentCells.CalculateAdjacents(cells, cells[i], 0.1f);
+            
         }
     }
-
+    
     void SetPalletes()
     {
         //choose a starting main colour randomly
@@ -1082,7 +1059,7 @@ public class MeshGenerator : MonoBehaviour {
                 for (int j = 0; j < adjacents.Count; j++)
                 {
 
-
+                    //loads of palletts this cell?
                     PaletteInfo adjacentPI = adjacents[j].AddComponent<PaletteInfo>();
 
                     //choose random harmony - or cluster colours by clamping to one  - or cluster to adjacent colours in the pallet (0,1,2) //or always contrast - last half of pallete

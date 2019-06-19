@@ -7,6 +7,21 @@ public class RoofTriangulator : MonoBehaviour {
     public static GameObject RoofObject(List<Vector3> ringVertices)
     {
 
+        GameObject roof = new GameObject();
+        // Set up game object with mesh;
+        roof.AddComponent(typeof(MeshRenderer));
+        MeshFilter filter = roof.AddComponent(typeof(MeshFilter)) as MeshFilter;
+        filter.mesh = TriangulatedRingMesh(ringVertices);
+
+        return roof;
+    }
+
+    public static Mesh TriangulatedRingMesh(List<Vector3> ringVertices)
+    {
+        
+
+
+
         Vector2[] vertices2D = new Vector2[ringVertices.Count];
         for (int i = 0; i < ringVertices.Count; i++)
         {
@@ -39,13 +54,7 @@ public class RoofTriangulator : MonoBehaviour {
         msh.RecalculateNormals();
         msh.RecalculateBounds();
 
-        GameObject roof = new GameObject();
-        // Set up game object with mesh;
-        roof.AddComponent(typeof(MeshRenderer));
-        MeshFilter filter = roof.AddComponent(typeof(MeshFilter)) as MeshFilter;
-        filter.mesh = msh;
-
-        return roof;
+        return msh;
     }
 
     public static GameObject RoofObjectFromConcavePolygon(List<Vector3> ringVertices, bool flip)
@@ -81,7 +90,7 @@ public class RoofTriangulator : MonoBehaviour {
 
         
 
-        // Create the mesh
+        // Create the mesh 
         Mesh msh = new Mesh();
         msh.vertices = vertices.ToArray();
         msh.triangles = indices.ToArray();

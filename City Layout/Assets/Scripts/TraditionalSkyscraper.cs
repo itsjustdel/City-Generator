@@ -223,6 +223,11 @@ public class TraditionalSkyscraper : MonoBehaviour {
             segments = maxFloors;
 
         bool spin = Random.value > 0.5f;
+
+        //overrdies
+        spin = false;
+        straight = true;
+
         if (spin)//is this straight bool?
         {
             //add spins

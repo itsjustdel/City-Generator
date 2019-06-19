@@ -10,7 +10,7 @@ public class Pavement : MonoBehaviour {
 
     public float cornerSizeScaler = .1f;
     public float maxCornerSize = 3f;
-    public float curveAccuracyCorners = 100f;//making this lower makes hexagonny style shapes
+    public float curveAccuracyCorners = 3f;//set quite low atm, is a bottke neck but accuracy doesn't need to be high a pavement//making this lower makes hexagonny style shapes
     public float curveStepSize = .5f;
     BezierSpline bezierForCorners;
     public GameObject pavement;
@@ -311,8 +311,8 @@ public class Pavement : MonoBehaviour {
             {
                 Vector3 p0 = bezierForCorners.GetPoint(k * step);
                 Vector3 d = Quaternion.Euler(0, 90, 0) * bezierForCorners.GetDirection(k) * step;
-                // Debug.DrawLine(p0, p0 + d, Color.red);
-
+               //  Debug.DrawLine(p0+transform.position, p0+transform.position + d, Color.red);
+               
                 if (distanceSinceLast > curveStepSize)
                 {
                     Vector3 p1 = bezierForCorners.GetPoint((k + step) * step);

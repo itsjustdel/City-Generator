@@ -20,8 +20,8 @@ public class BuildControl : MonoBehaviour {
     bool cellsSetInactive = false;
     bool waitingForReset = false;
     public float secondsToWaitTilNext = 1f;
-    
 
+    public bool respawnWhenDone = true;
     private void Start()
     {
         //make acopy
@@ -79,6 +79,17 @@ public class BuildControl : MonoBehaviour {
         {
             foreach (GameObject cell in cells)
                 cell.GetComponent<TraditionalSkyscraper>().enabled = true;
+
+            bool allDone = true;
+            foreach (GameObject cell in cells)
+                if (!cell.GetComponent<TraditionalSkyscraper>().finishedBuilding)
+                    allDone = false;
+
+            if (allDone)
+            {
+                GameObject.Find("Spawner").GetComponent<Spawner>().reset = true;
+            }
+
         }
         else if(soloBuildings)
         {
