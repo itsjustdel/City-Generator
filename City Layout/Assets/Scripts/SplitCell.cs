@@ -25,8 +25,7 @@ public class SplitCell : MonoBehaviour
 
     void BreakDown()
     {
-        //remove the cell we are working from the main cell list
-        meshGenerator.cells.Remove(gameObject);
+        
         
 
         //for each cell in working list
@@ -44,6 +43,10 @@ public class SplitCell : MonoBehaviour
            // Debug.Log("edge count for working cell = " + workingList[0].GetComponent<AdjacentCells>().edges.Count);
             if (gameObject.GetComponent<MeshRenderer>().bounds.size.magnitude > minSize) //avg around 80
             {
+
+                //remove the cell we are working from the main cell list
+                meshGenerator.cells.Remove(gameObject);
+
                 toAdd = Split(gameObject);
 
                 gameObject.name = "ToRemove";
@@ -69,13 +72,13 @@ public class SplitCell : MonoBehaviour
         //now add all the cells we created to a list that will add/remove them once mesh generater script has worked its way through initial loop
         //foreach (GameObject go in toRemove)
         //meshGenerator.cellsToRemove.Add(go);
-
         foreach (GameObject go in toAdd)
         {
             //work out adjacents for these new cells
             meshGenerator.cells.Add(go);
         }
 
+        /*
         //redo edges for all adjacent cells
         foreach (GameObject go in toAdd)
         {
@@ -88,38 +91,18 @@ public class SplitCell : MonoBehaviour
             //and also just for this cell too
             go.GetComponent<AdjacentCells>().Edges();
         }
-        //work out adjacents for adjacent cells
+        */
 
-        foreach (GameObject go in toAdd)
-        {
-            AdjacentCells.CalculateAdjacents(meshGenerator.cells, go, 0.1f);
-        }
-
-        foreach (GameObject go in toAdd)
-        {
-            List<GameObject> adjacentCells = go.GetComponent<AdjacentCells>().adjacentCells;
-            for (int i = 0; i < adjacentCells.Count; i++)
-            {
-                AdjacentCells.CalculateAdjacents(meshGenerator.cells, adjacentCells[i], 0.1f);
-            }
-        }
-
-        //add split cell to new cells
-        foreach(GameObject go in toAdd)
-        {
-          //  go.AddComponent<SplitCell>();//.Start();
-        }
-        // Debug.Log("to ad count " + toAdd.Count);
-
-        //StartCoroutine("AddOverTime", toAdd);//debugs
         AddInstant(toAdd);
+
+        
     }
 
     void AddInstant(List<GameObject> cells)
     {
         for (int i = 0; i < cells.Count; i++)
         {
-            cells[i].AddComponent<SplitCell>().Start();
+            meshGenerator.cellsToSplit.Add(cells[i]);
         }
 
     }
@@ -264,8 +247,8 @@ public class SplitCell : MonoBehaviour
             }
         }
 
-        Debug.DrawLine(vertices[pair[0]], vertices[pair[1]], Color.blue);
-        Debug.Break();
+      //////  Debug.DrawLine(vertices[pair[0]], vertices[pair[1]], Color.blue);
+      //  Debug.Break();
     }    
 
     List<List<Vector3>> LongestSplit(out List<List<int>> edgesSortedByLength, GameObject toSplit)
@@ -301,14 +284,14 @@ public class SplitCell : MonoBehaviour
         //make largest number first in list
         edgesByLength.Reverse();
 
-        Debug.DrawLine(vertices[edgesByLength[0][0]], vertices[edgesByLength[0][1]], Color.cyan);
-        Debug.DrawLine(vertices[edgesByLength[1][0]], vertices[edgesByLength[1][1]]);
+       // Debug.DrawLine(vertices[edgesByLength[0][0]], vertices[edgesByLength[0][1]], Color.cyan);
+        //Debug.DrawLine(vertices[edgesByLength[1][0]], vertices[edgesByLength[1][1]]);
 
         //now choose where to split these edges
         Vector3 split0 = Vector3.Lerp(vertices[edgesByLength[0][0]], vertices[edgesByLength[0][1]], .5f); //random?
         Vector3 split1 = Vector3.Lerp(vertices[edgesByLength[1][0]], vertices[edgesByLength[1][1]], .5f);
 
-        Debug.DrawLine(split0, split1, Color.red);
+        //Debug.DrawLine(split0, split1, Color.red);
 
         //now we need to make two polygons out of this
         //start at [1]
@@ -422,6 +405,9 @@ public class SplitCell : MonoBehaviour
             //now triangulate cell
             for (int j = 0; j < splitVertices[i].Count; j++)
             {
+                if (j == 0)
+                    continue;
+
                 if (j < splitVertices[i].Count - 1)
                 {
                     triangles.Add(j);

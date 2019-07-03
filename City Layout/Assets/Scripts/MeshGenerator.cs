@@ -61,10 +61,13 @@ public class MeshGenerator : MonoBehaviour {
     public List<int[]> meshTris = new List<int[]>();
 
     public int density = 5;
+    public float minSplitSize = 50;
 
     public List<GameObject> cells = new List<GameObject>();
     public List<GameObject> cellsToAdd = new List<GameObject>();
-   // public List<GameObject> cellsToRemove = new List<GameObject>();
+    public List<GameObject> cellsToSplit = new List<GameObject>();
+    public List<GameObject> cellsToMerge = new List<GameObject>();
+    // public List<GameObject> cellsToRemove = new List<GameObject>();
     //public List<List<GameObject>> adjacentCells = new List<List<GameObject>>();//moved t0 saving on each cell with AdjacentCells class
     public int adjacentCellsCount = 0;
 
@@ -80,9 +83,9 @@ public class MeshGenerator : MonoBehaviour {
         tolerance = minEdgeSize;//testing
 
 
-        StartCoroutine("Lloyds");
+        //StartCoroutine("Lloyds");
 
-
+        Lloyds();
 
     }
 
@@ -112,7 +115,7 @@ public class MeshGenerator : MonoBehaviour {
         
     }
 
-    IEnumerator Lloyds()
+    void Lloyds()
     {
         
     
@@ -142,6 +145,8 @@ public class MeshGenerator : MonoBehaviour {
 
             //Go get points from Road Curve       
             DualGraph dualGraph = new DualGraph(volume);
+
+            //Debug.Log("cells count before split = " + cells.Count);
             cells.Clear();      
 
             cellNumber = (int)volume.x / density;
@@ -253,38 +258,28 @@ public class MeshGenerator : MonoBehaviour {
 
            
         }
-
-        //
+        
         //take small corners out to simplify the shape
         Edges();
-        RemoveSmallEdges();//testing early in pipeline
         
-        //
 
-
-        
         CalculateAdjacents();
-        Edges();
+       // Edges();
+
+        SplitCells();
+
+        RemoveSmallEdges();//testing early in pipeline
+        ReMesh(true);
 
 
-
-        
-        //SplitCells();
-       // ReMesh(true);
-        yield break;
-        
-        
         //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
         Edges();
         CalculateAdjacents();
+        //prob not necessary ^^
 
-        
 
-        //MergeCells();
-        
+         MergeCells();
 
-        Edges();//merge cells might cover this
-        //work out which cells each cell shares any points with - save results on Adjacent Edge script
         
         //choose colours for each cell
         SetPalletes();
@@ -292,50 +287,65 @@ public class MeshGenerator : MonoBehaviour {
         
         //add ...
         AddToCells();
-               
-        yield break;
+                
+     //   yield break;
     }
 
     void SplitCells()
     {
         //we can split some of the voronoi cells for smaller internal patterns
-        List<GameObject> toRemove = new List<GameObject>();
-        //create temp list to iterate through as we will add to the main cells list as we are building
         List<GameObject> originalCells = new List<GameObject>(cells);
 
-        for (int i = 0; i < originalCells.Count; i++)
+
+        //we will split only one cell at the moment
+        cellsToSplit.Add(cells[UnityEngine.Random.Range(0,cells.Count)]);
+        
+
+        while (cellsToSplit.Count > 0)
         {
             //need to add adjacent cells stuff to new cells
-            SplitCell splitCell = originalCells[i].AddComponent<SplitCell>();
+            SplitCell splitCell = cellsToSplit[0].AddComponent<SplitCell>();
             splitCell.meshGenerator = this;
+            splitCell.minSize = minSplitSize;
             splitCell.Start();
+
+            cellsToSplit.RemoveAt(0);
+
+            Edges();
+            CalculateAdjacents();
+
+            
         }
-
-        //split cell script populates toAdd list so we dont add as we are iterating through cells list
-        //add now
-
-      //  cells.Clear();
-
-        //foreach (GameObject go in cellsToAdd)
-          //  cells.Add(go);
     }
 
    
     void MergeCells()
     {
-        //add scripts to random cells here
-
-        int r = UnityEngine.Random.Range(0, cells.Count);
-        cells[r].AddComponent<MergeCell>().Start();
-        //cells[r].AddComponent<MergeCell>().Start();
-        //cells[r].AddComponent<MergeCell>().Start();
-
-        for (int i = 0; i < cells.Count; i++)
+        //merge some cells together
+        int maxMerges = 1;
+        for (int i = 0; i < maxMerges; i++)
         {
-            //cells[i].AddComponent<MergeCell>().Start();
+            
+        
+            int r = UnityEngine.Random.Range(0, cells.Count);
 
-            ///if (i > 0)
-               // break;//tests
+            //don't merge a cell already merged, it will be huge -just continue, use up one of the chances to merge
+            if (cells[r].GetComponent<MergeCell>() != null)
+                continue;
+
+            cells[r].AddComponent<MergeCell>();
+            cellsToMerge.Add(cells[r]);
+
+            while (cellsToMerge.Count > 0)
+            {
+                cellsToMerge[0].GetComponent<MergeCell>().maxMerges = UnityEngine.Random.Range(1, 3);
+                cellsToMerge[0].GetComponent<MergeCell>().Start();
+
+                cellsToMerge.RemoveAt(0);
+
+                Edges();
+                CalculateAdjacents();
+            }
         }
     }
 
@@ -588,7 +598,7 @@ public class MeshGenerator : MonoBehaviour {
     }
 
 
-    void Edges()
+    public void Edges()
     {
         //makes list of edges for each cell and removes any that are too small
 
@@ -962,6 +972,7 @@ public class MeshGenerator : MonoBehaviour {
 
             if (makeSkyscraperTraditional)
             {
+
                 cells[i].AddComponent<TraditionalSkyscraper>();
 
                 //add to build control list
@@ -972,7 +983,7 @@ public class MeshGenerator : MonoBehaviour {
             }
         }
 
-
+//        Debug.Log("cells count before extrude loop = " + cells.Count);
         //now we have found adjacents, we can scale cells
         for (int i = 0; i < cells.Count; i++)
         { //set layer here
@@ -983,6 +994,21 @@ public class MeshGenerator : MonoBehaviour {
                 ex.uniqueVertices = true;
                 //call start straight away
                 ex.Start();
+
+                //also extrude any cells that were used to merge cells(we use them to compare points later)
+                if (cells[i].GetComponent<MergeCell>() != null)
+                {
+                    MergeCell mergeCell = cells[i].GetComponent<MergeCell>();
+                    for (int j = 0; j < mergeCell.previousCells.Count; j++)
+                    {
+                        mergeCell.previousCells[j].SetActive(true);
+                        ExtrudeCell extrudeCell = mergeCell.previousCells[j].AddComponent<ExtrudeCell>();
+                        extrudeCell.onlyScale = true;
+                        extrudeCell.Start();
+                        mergeCell.previousCells[j].SetActive(false);
+                    }
+                }
+
             }
         }
 

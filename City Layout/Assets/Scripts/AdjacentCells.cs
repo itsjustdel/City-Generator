@@ -29,7 +29,7 @@ public class AdjacentCells : MonoBehaviour {
 
     private void Start()
     {
-        tolerance = GameObject.FindGameObjectWithTag("Code").GetComponent<MeshGenerator>().minEdgeSize;//testing
+        tolerance = 0.1f;// GameObject.FindGameObjectWithTag("Code").GetComponent<MeshGenerator>().minEdgeSize;//testing
 
     }
     public void FindSharedEdges()
@@ -283,7 +283,9 @@ public class AdjacentCells : MonoBehaviour {
         //  Debug.DrawLine(p0, p1, Color.blue);
         //  Debug.DrawLine(p2, p1, Color.blue);
         // if(draw)
-        //   Debug.DrawLine(p1, p1 + miterDirection * -length , Color.red);
+           //Debug.DrawLine(p1, p1 + miterDirection * -length , Color.red);
+        //Debug.Break();
+        //GetComponent<MeshRenderer>().enabled = true;
         /*
         GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
         c.transform.position = p0;

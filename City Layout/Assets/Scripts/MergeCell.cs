@@ -7,8 +7,10 @@ public class MergeCell : MonoBehaviour
     public GameObject target;
     public int mergedWith = 0;
     public bool keepMerging = true;
+    public int maxMerges = 3;
 
-    public List<GameObject> previousCells = new List<GameObject>();
+    public List<GameObject> previousCells = new List<GameObject>();//
+    MeshGenerator meshGenerator;
     private void Awake()
     {
         enabled = false;
@@ -16,28 +18,39 @@ public class MergeCell : MonoBehaviour
     // Start is called before the first frame update
     public void Start()
     {
+        meshGenerator = GameObject.FindGameObjectWithTag("Code").GetComponent<MeshGenerator>();
+
         GameObject mergedCell = ChooseEdgeToMergeWith();
 
+        
         if(mergedCell != null)
         {
-            if (mergedWith < 4)
+        
+            
+            if (mergedWith < maxMerges && keepMerging)
             {
 
                 MergeCell mergeCell = mergedCell.GetComponent<MergeCell>();
                 //keep a track of how many cells we have merged in this chain
                 mergeCell.mergedWith = mergedWith + 1;
+                mergeCell.maxMerges = maxMerges;
                 mergeCell.previousCells.AddRange(previousCells);
-                mergeCell.Start();
+               // mergeCell.Start();
+                //send to build list
+                meshGenerator.cellsToMerge.Add(mergedCell);
+                
             }
 
             else
             {
-                Vector3[] vertices = mergedCell.GetComponent<MeshFilter>().mesh.vertices;
-                for (int i = 0; i < vertices.Length; i++)
-                {
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = transform.position + vertices[i];
-                }
+
+                //add merge cell component to store previous cells - we will use them in buildign skyscraper
+                MergeCell mergeCell = mergedCell.GetComponent<MergeCell>();
+                //keep a track of how many cells we have merged in this chain
+                mergeCell.mergedWith = mergedWith + 1;
+                mergeCell.maxMerges = maxMerges;
+
+                mergeCell.previousCells.AddRange(previousCells);
             }
         }
         
@@ -50,13 +63,14 @@ public class MergeCell : MonoBehaviour
         
         //choose from adjacent cells
         List<GameObject> adjacentCells = GetComponent<AdjacentCells>().adjacentCells;
+       // Debug.Log("adjacents = " + adjacentCells.Count);
 
         List<GameObject> possibleTargets = new List<GameObject>();
         //check if any possible targets have already been merged, as we merge them we drop an disabled merge cells component on them as a bookmark
         for (int i = 0; i < adjacentCells.Count; i++)
         {
             //if no merge cell on cell it means we havent tried to merge it at all
-            if (adjacentCells[i].GetComponent<MergeCell>() == null)          
+          //  if (adjacentCells[i].GetComponent<MergeCell>() == null)          ////////***************possibly need this
                 possibleTargets.Add(adjacentCells[i]);
         }
         
@@ -71,7 +85,7 @@ public class MergeCell : MonoBehaviour
         if (target != null)
             targetCell = target;
 
-        targetCell.name = "target";
+        targetCell.name = "Target";
         targetCell.GetComponent<MeshRenderer>().sharedMaterial = Resources.Load("White") as Material;
         //add a merge cell component to book mark
         targetCell.AddComponent<MergeCell>().enabled = false;
@@ -161,7 +175,8 @@ public class MergeCell : MonoBehaviour
 
         //add adjacent cells script to new cell//
         mergedCell.AddComponent<AdjacentCells>().Edges();
-        
+
+        /*//doing in build loop for all cells each merge
         //redo edges for all adjacents
         for (int i = 0; i < adjacentCells.Count; i++)
         {
@@ -176,6 +191,11 @@ public class MergeCell : MonoBehaviour
         }
         //now we can add adjacents to our new merged cell
         AdjacentCells.CalculateAdjacents(mg.cells, mergedCell, mg.minEdgeSize);
+
+        */
+
+        //if using build list for mergin, remove this - will do in build loop
+        meshGenerator.CalculateAdjacents();
 
         //option for debuggin to keep track of what heppened
         bool destroyOldCells = false;
@@ -194,8 +214,11 @@ public class MergeCell : MonoBehaviour
             //gameObject.transform.parent = mergedCell.transform;
             //targetCell.transform.parent = mergedCell.transform; //positional issues with this
 
-            previousCells.Add(gameObject);
-            previousCells.Add(targetCell);
+            //add cell to list if we haven't merged it. Keeping track of all original cells
+            if(gameObject.GetComponent<MergeCell>().mergedWith ==0)
+                previousCells.Add(gameObject);
+            if (targetCell.GetComponent<MergeCell>().mergedWith == 0)
+                previousCells.Add(targetCell);
         }
 
       //  if (canMerge)

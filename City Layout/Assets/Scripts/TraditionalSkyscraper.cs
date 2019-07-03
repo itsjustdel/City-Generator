@@ -100,17 +100,19 @@ public class TraditionalSkyscraper : MonoBehaviour {
     //grab material holding class on gameobject
     PaletteInfo pI;//
 
-
-
-
-
     private void Awake()
     {
         //enabled form build script
         this.enabled = false;
     }
 
-    void Start () {
+    void Start ()
+    {
+
+        
+           // if (GetComponent<MergeCell>() == null)
+            //    return;///testtt
+
 
 
         //grab material holding class on gameobject
@@ -211,6 +213,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         Vector3[] vertices = mesh.vertices;
         int randomSide = Random.Range(0, vertices.Length + (int)vertices.Length / 2);//make it *1.5f as like;y to be more unifrom
 
+        
       //  bool allRandom = Random.value >= 0.5f;
         //make staright side type common
         bool straight = Random.value >= 0.8f;//straight is alright but a bit boring
@@ -226,7 +229,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         //overrdies
         spin = false;
-        straight = true;
+        straight = false;
 
         if (spin)//is this straight bool?
         {
@@ -255,21 +258,65 @@ public class TraditionalSkyscraper : MonoBehaviour {
         }
         else
         {
-            spinAmount0 = 0f;
-            spinAmount1 = 0f;
-            spinAmount2 = 0f;
+            spinAmount0 = Random.Range(0f, 1f);
+            spinAmount1 = Random.Range(0f, 1f);
+            spinAmount2 = Random.Range(0f, 1f);
         }
-        
+
         //changes how much the building takes up of the cell. always leaving a little, looks nicer
-        float straightScaler = Random.Range(0.5f, .9f);//if needed 
+        float straightScaler = 1f; // Random.Range(0.5f, .9f);//if needed 
+        
+        /*
+        List<float> distances = new List<float>();
+        AdjacentCells aJ = GetComponent<AdjacentCells>();
+        for (int i = 1; i < vertices.Length; i++)
+        {
+            //find intersect
+            Vector3 miter = aJ.miters[i - 1][0];
+          
+            for (int j =1; j < vertices.Length; j++)
+            {
+                
+
+                int nextIndex = j + 1;
+                if (nextIndex > vertices.Length - 1)
+                    nextIndex = 1;
+
+                Vector3 lineVector1 = (vertices[nextIndex] - vertices[j]).normalized;
+
+                Vector3 intersect = Vector3.zero;
+                
+                if (LineLineIntersection(out intersect, vertices[i]+miter.normalized , miter.normalized, vertices[j], lineVector1))
+                { 
+                    Debug.DrawLine(vertices[i] + transform.position, vertices[i] + miter * 5 + transform.position, Color.blue);
+                    Debug.DrawLine(vertices[j] + transform.position, vertices[nextIndex] + transform.position);
+
+                    //is intersect point on the line we are checking
+                    float intersectDistance = Vector3.Distance(vertices[j], intersect);
+                    float d = Vector3.Distance(vertices[j], vertices[nextIndex]) - (intersectDistance + Vector3.Distance(vertices[nextIndex], intersect));
+                   // Debug.Log(d);
+                    if (d > -0.1f)                        
+                    {
+                        Debug.DrawLine(vertices[i] + transform.position,vertices[i]+(intersect-vertices[i])*.5f + transform.position, Color.red);
+
+                        //save half the distance to intersect. This will be the absolute maximum the building can pull in on this corner
+                        float minToLeave = 1f;//1 metre min size of inside
+                        
+                        distances.Add(intersectDistance * 0.5f + minToLeave);// 
+                        Debug.Break();
+                    }
+                }
+            }
+        }
+        */
 
         for (int i = 1; i < vertices.Length; i++)
         {
 
             //heights for each vertice
 
-            float heightRandom1 = Random.Range(0.33f, 0.66f);//make list and have random heights for each curve?
-            float heightRandom2 = Random.Range(0.66f, 1f);
+            float heightRandom1 = Random.Range(0.5f, 0.75f);//make list and have random heights for each curve?
+            float heightRandom2 = Random.Range(0.76f, 1f);
 
             randomsHeight.Add(new List<float> { heightRandom1, heightRandom2});
 
@@ -286,22 +333,32 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 random3 = straightScaler;
             }
             //if we compute the random numbers here we get a more erratic shape
-            else if (i == randomSide)// || allRandom)
+            
+            if (i == randomSide)
             {
-                random1 = Random.Range(0.5f, 1f);
-                random2 = Random.Range(0.2f, 1f);
+                random1 = Random.Range(0.0f, 1f);
+                random2 = Random.Range(0.0f, 1f);
                 random3 = Random.Range(0f, 1f);
             }
-            else //all random
+            else if (!straight)//all random
             {
-                random1 = Random.Range(0.5f, 1f);
-                random2 = Random.Range(0.2f, 1f);
+                random1 = Random.Range(0.0f, 1f);
+                random2 = Random.Range(0.0f, 1f);
                 random3 = Random.Range(0f, 1f);
+
+                random1 = 0f;//highe value, the closer it goes to the middle
+                random2 = 0f;
+                random3 = 1f;
             }
 
-            randoms.Add(new List<float> { random1, random2, random3 });
+            List<float> temp = new List<float> { random1, random2, random3 };
+            //scale randoms by max pavement size
+            //float max = distances[i - 1];// Mathf.Sqrt( GetComponent<MeshRenderer>().bounds.size.magnitude );//testing //use intersect point across with miter dir( halved )
+            
+            //for (int f =0; f < temp.Count;f++)
+              //  temp[f] *= max;
 
-
+            randoms.Add(temp);
         }
 
 
@@ -309,6 +366,26 @@ public class TraditionalSkyscraper : MonoBehaviour {
         //windows and corners
 
     
+    }
+    bool AreABCOneTheSameLine(Vector3 A, Vector3 B, Vector3 C)
+    {
+        return Mathf.Approximately(
+            Vector3.Project(A - B, A - C).magnitude,
+            (A - B).magnitude
+        );
+    }
+
+    float DistanceLineSegmentPoint(Vector3 a, Vector3 b, Vector3 p)
+    {
+        // If a == b line segment is a point and will cause a divide by zero in the line segment test.
+        // Instead return distance from a
+        if (a == b)
+            return Vector3.Distance(a, p);
+
+        // Line segment to point distance equation
+        Vector3 ba = b - a;
+        Vector3 pa = a - p;
+        return (pa - ba * (Vector3.Dot(pa, ba) / Vector3.Dot(ba, ba))).magnitude;
     }
 
     void ValuesWindows()
@@ -401,49 +478,240 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         splines = new List<BezierSpline>();
         //add a curve for each point on the edge of the cell, the corners
-
+        //points are made of four points
         //choose a side to sculpt with more random detail
-        //if this number is over vertices length, it won't sculpt a side , just keep everything more uniform
+        
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
 
+         AdjacentCells aJ = GetComponent<AdjacentCells>(); //going back to vertices[0] - but for original cell
+        //use to find where to lerp to, saved as were we merging cells
+        List<GameObject> previousCells = null;
+        if(GetComponent<MergeCell>() != null)
+            previousCells = GetComponent<MergeCell>().previousCells;
+
+
+        List<float> distances = new List<float>();
+        List<Vector3> directions = new List<Vector3>();
+
+
+        Vector3[] originalVerticesThis = GetComponent<ExtrudeCell>().originalMesh.vertices;
+
+        float minBuildWidth = 3f;
+        for (int i = 1; i < originalVerticesThis.Length; i++)
+        {
+            //we need to find which cell this vertice point used to belong to so we can use the old cell's centre point to drag curve/building in
+
+            float distanceToCenter = 0f;
+            //Vector3 originalCenter = originalVerticesThis[0];
+            if (GetComponent<MergeCell>() == null)
+            {
+                //note we are using vertices and not original so we take in to account the distance aleady scaled by ExtrudeCell
+                distanceToCenter = Vector3.Distance(vertices[i], vertices[0]);
+
+                Vector3 originalCenter = (vertices[i] - vertices[0]).normalized * minBuildWidth;//min edge var?
+                directions.Add(originalCenter - vertices[i]);
+
+                //directions.Add(vertices[0] - vertices[i]);
+
+
+            }
+            //if we are working on a merged cell
+            else
+            {
+            //    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+             //   c.transform.position = originalVerticesThis[i];
+
+                List<Vector3> matches = new List<Vector3>();
+                for (int a = 0; a < previousCells.Count; a++)
+                {
+                    Vector3[] originalVerticesPrevious = previousCells[a].GetComponent<ExtrudeCell>().originalMesh.vertices;
+
+
+
+                    for (int b = 0; b < originalVerticesPrevious.Length; b++)
+                    {
+                        if (b == 0) continue;//skip centre
+
+
+
+                        if (Vector3.Distance(originalVerticesThis[i], originalVerticesPrevious[b]) < 0.1f)
+                        {
+                            //add the orig. cell's centre point
+                            matches.Add(originalVerticesPrevious[0]);
+
+
+                           // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            //c.transform.position = originalVerticesPrevious[0];
+                            //c.name = matches.Count.ToString();
+                        }
+
+                        Debug.Log(matches.Count);
+                    }
+                }
+                //if no point was found, it is a shared vertice between two cells, use the average of all
+                Vector3 originalCenter = Vector3.zero;
+                foreach (Vector3 v3 in matches)
+                    originalCenter += v3;
+
+                //do avg.
+                originalCenter /= matches.Count;
+
+                
+
+
+                //we were working in world space with the old original meshes, fix this
+                originalCenter -= transform.position;
+
+                distanceToCenter = Vector3.Distance(originalCenter, vertices[i]);
+
+
+                //move "original center" towards the vertice so it is always at least minEdge length
+                originalCenter += (vertices[i] - originalCenter).normalized * minBuildWidth;//min edge var?
+                directions.Add(originalCenter - vertices[i]);
+
+
+
+
+                distances.Add(-distanceToCenter);//....at 1 it creates no border//look at what miter creatoin us doing with distancess does changing this umber do anything?
+            }
+        }
+        
+        /*closest neightbour
+        //work out closest vertice to each vertice, the distance to this is the max distance the building can pul inwards
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            if (i == 0) continue;
+
+           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //c.transform.position = transform.position + vertices[i];
+            //c.name = "vertices " + i.ToString();
+                 
+                
+
+            //find nearest
+            float distance = Mathf.Infinity;
+            int index = 0;
+            for (int j = 0; j < vertices.Length; j++)
+            {
+                if (j == 0) continue;
+
+                if (i == j) continue;
+
+                float temp = Vector3.Distance(vertices[i], vertices[j]);
+
+                if(temp < distance)
+                {
+                    distance = temp;
+                    index = j;
+                }
+            }
+            
+            //add closest distance to list, halved and made negative for miter function
+            float minBuildingWidth = GameObject.FindGameObjectWithTag("Code").GetComponent<MeshGenerator>().minEdgeSize*2;
+            //distance *= 0.5f;
+
+            if (distance < minBuildingWidth)
+            {
+                distance += 2f;// minBuildingWidth;
+                //c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //c.transform.position = transform.position + vertices[index];
+                //c.name = "closest " + i.ToString();
+            }
+
+            distances.Add( -distance);
+        }
+        */
+        //now use these distances to plot miters
+       // List<Vector3> miters = Pavement.MitersWithUniqueLengths(Pavement.CornerPoints(gameObject, 1f),distances);
+        //change this properly when satisfied it is working
+        // miters = directions;
+
         for (int i = 1; i < vertices.Length; i++)
         {
-            // if (i == 0)
-            //skip central vertice- add as a modifier later?
-            //  continue;
+            Debug.DrawLine(vertices[i] + directions[i-1] + transform.position, vertices[i] +transform.position,Color.cyan);
+        }
 
+        /*
+        //removal -- removes even when large
+        //remove any points that are too close when we add the miter to them
+        List<Vector3> verticesList = new List<Vector3>(vertices);
+        
+        for (int i = verticesList.Count-1; i > 0; i--)
+        {
+            //clamp
+            int nextIndex = i-1;
+            if (nextIndex == 0)
+                nextIndex = verticesList.Count-1;
+
+            Vector3 p0 = verticesList[i] + directions[i-1];
+            Vector3 p1 = verticesList[nextIndex] + directions[nextIndex-1];
+            float d = Vector3.Distance(p0, p1);
+            if(d< 3f)//minedge
+            {
+
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = transform.position + vertices[i];
+                c.name = "removing " + i.ToString();
+                Debug.Break();
+
+                verticesList[i] = Vector3.Lerp(verticesList[i], verticesList[nextIndex], 0.5f);
+
+                verticesList.RemoveAt(i);
+                directions.RemoveAt(i-1);
+            }
+        }
+        
+
+        vertices = verticesList.ToArray();
+
+        */
+
+        //invert miters
+        for (int i = 0; i < directions.Count; i++)
+        {
+            //miters[i] = -miters[i];
+        }
+        
+        for (int i = 1; i < vertices.Length; i++)
+        {
             BezierSpline splineL = gameObject.AddComponent<BezierSpline>();
 
-
+           // Vector3 miter = (aJ.miters[i - 1][0]).normalized;
             //scale but don't spin first point
-            Vector3 p0 = Vector3.Lerp(vertices[0], vertices[i],randoms[i-1][0]); //i -1 beacuse vertices are skipped on [0]
-
+           // Vector3 p0 = Vector3.Lerp(originalCenter, vertices[i],randoms[i-1][0]); //i -1 beacuse vertices are skipped on [0]
+            //use miter for direction inside
+           
+            Vector3 p0 = vertices[i] + directions[i-1] * randoms[i - 1][0] ;//not, same as random as next point (creating straight start to building) - could add another if we want crazy starts
             //first of all spin vertice
             Vector3 p1 = Quaternion.Euler(0, spinAmount0, 0) * vertices[i];
             //then decide how close te centre we want
-            p1 = Vector3.Lerp(vertices[0], p1, randoms[i-1][0]);
+            //p1 = Vector3.Lerp(originalCenter, p1, randoms[i-1][0]);
+            p1 = p1 + directions[i - 1] * randoms[i - 1][0]  ;//var - randoms?
+
             //then raise by hight
             p1 += Vector3.up * randomsHeight[i-1][0];
 
             Vector3 p2 = Quaternion.Euler(0, spinAmount1, 0) * vertices[i];
             //then decide how close te centre we want
-            p2 = Vector3.Lerp(vertices[0], p2, randoms[i-1][1]);
+            //p2 = Vector3.Lerp(originalCenter, p2, randoms[i-1][1]);
+            p2 = p2 + directions[i - 1] * randoms[i - 1][1] ;//var
             //then raise by hight
             p2 += Vector3.up * randomsHeight[i - 1][1];
 
             Vector3 p3 = Quaternion.Euler(0, spinAmount2, 0) * vertices[i];
             //then decide how close te centre we want
-            p3 = Vector3.Lerp(vertices[0], p3, randoms[i-1][2]);
+            //p3 = Vector3.Lerp(originalCenter, p3, randoms[i-1][2]);
+            p3 = p3 + directions[i-1] * randoms[i-1][2];
             //then raise by hight
             p3 += Vector3.up * totalHeight;//no random on this, just set to total height
 
             bool showHeightCube = false;
             if (showHeightCube)
             {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = Vector3.up * totalHeight + transform.position;
-                c.transform.name = "Total Height";
+                GameObject c0 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c0.transform.position = Vector3.up * totalHeight + transform.position;
+                c0.transform.name = "Total Height";
             }
 
             // p3 = Vector3.Lerp(vertices[0] + Vector3.up * totalHeight, p3, random3); //don't change total height
@@ -453,7 +721,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
             splines.Add(splineL);
 
-
+            
         }
 
 
@@ -599,7 +867,37 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     p = new Vector3(p.x, clampedHeight, p.z);
 
                     //add to our list
-                    cornerPoints.Add(p);
+                    //remove any that are too close
+                    if (j == 0)
+                    {
+                        cornerPoints.Add(p);
+                    }
+                    else if(j < splines.Count-1)
+                    {
+                        if(Vector3.Distance(p,cornerPoints[ cornerPoints.Count-1]) < 3f)//var
+                        {
+                            //dont add
+                            break;
+                        }
+                        cornerPoints.Add(p);
+                    }
+                    else if( j == splines.Count -1)
+                    {
+                        if (Vector3.Distance(p, cornerPoints[cornerPoints.Count - 1]) < 3f)//var
+                        {
+                            //dont add
+                            break;
+                        }
+
+                        //also check to first point
+                        if (Vector3.Distance(p, cornerPoints[0]) < 3f)//var
+                        {
+                            //dont add
+                            break;
+                        }
+
+                        cornerPoints.Add(p);
+                    }
 
                     if (showCubes)
                     {
@@ -616,6 +914,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 }
             }
         }
+
+        
 
         return cornerPoints;
     }
@@ -1631,4 +1931,30 @@ public class TraditionalSkyscraper : MonoBehaviour {
         if (x > 1.0f) return 1.0f;
         return Mathf.Pow(2.0f, 10.0f * (x - 1.0f));
     }
+    //Calculate the intersection point of two lines. Returns true if lines intersect, otherwise false.
+    //Note that in 3d, two lines do not intersect most of the time. So if the two lines are not in the 
+    //same plane, use ClosestPointsOnTwoLines() instead.
+    public static bool LineLineIntersection(out Vector3 intersection, Vector3 linePoint1, Vector3 lineVec1, Vector3 linePoint2, Vector3 lineVec2)
+    {
+
+        Vector3 lineVec3 = linePoint2 - linePoint1;
+        Vector3 crossVec1and2 = Vector3.Cross(lineVec1, lineVec2);
+        Vector3 crossVec3and2 = Vector3.Cross(lineVec3, lineVec2);
+
+        float planarFactor = Vector3.Dot(lineVec3, crossVec1and2);
+
+        //is coplanar, and not parrallel
+        if (Mathf.Abs(planarFactor) < 0.0001f && crossVec1and2.sqrMagnitude > 0.0001f)
+        {
+            float s = Vector3.Dot(crossVec3and2, crossVec1and2) / crossVec1and2.sqrMagnitude;
+            intersection = linePoint1 + (lineVec1 * s);
+            return true;
+        }
+        else
+        {
+            intersection = Vector3.zero;
+            return false;
+        }
+    }
+
 }

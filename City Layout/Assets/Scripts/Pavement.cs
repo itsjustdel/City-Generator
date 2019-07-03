@@ -9,7 +9,7 @@ public class Pavement : MonoBehaviour {
     public float borderSize = 2f;
 
     public float cornerSizeScaler = .1f;
-    public float maxCornerSize = 3f;
+    public float maxCornerSize = 1f;//maybe dont need now i have set min edge size in mesh gen
     public float curveAccuracyCorners = 3f;//set quite low atm, is a bottke neck but accuracy doesn't need to be high a pavement//making this lower makes hexagonny style shapes
     public float curveStepSize = .5f;
     BezierSpline bezierForCorners;
@@ -24,7 +24,7 @@ public class Pavement : MonoBehaviour {
     {
         bezierForCorners = gameObject.AddComponent<BezierSpline>();
 
-        List<Vector3> cornerPoints = CornerPoints();
+        List<Vector3> cornerPoints = CornerPoints(gameObject,maxCornerSize);
 
         List<List<Vector3>> edgePoints = EdgePoints(cornerPoints);
 
@@ -97,7 +97,7 @@ public class Pavement : MonoBehaviour {
         return positions;
     }
 
-    List<Vector3> Miters(List<Vector3> ringPoints, float borderSize)
+    public static List<Vector3> Miters(List<Vector3> ringPoints, float borderSize)
     {
         List<Vector3> miters = new List<Vector3>();
 
@@ -135,15 +135,16 @@ public class Pavement : MonoBehaviour {
             Vector3 miterDirection0 = MiterDirection(p0, p1, p2,borderSize);
             Vector3 miterDirection1 = MiterDirection(p1, p2, p3, borderSize);
 
-            
+            /*
             if(i == 0)
                 Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.red);
             else
                 Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.blue);
+                */
 
 
-            Vector3 m0 = p1 + miterDirection0 * -borderSize;
-            Vector3 m1 = p1 + miterDirection0 * -borderSize;
+            Vector3 m0 = miterDirection0;// * -borderSize;
+            Vector3 m1 = miterDirection0;// * -borderSize;
             miters.Add(m0);
             //miters.Add(m1);
 
@@ -152,12 +153,68 @@ public class Pavement : MonoBehaviour {
         return miters;
     }
 
-    List<Vector3> CornerPoints()
+    public static List<Vector3> MitersWithUniqueLengths(List<Vector3> ringPoints, List<float> borderSizes)
+    {
+        List<Vector3> miters = new List<Vector3>();
+
+        //ringPoints.Distinct();
+
+        for (int i = 0; i < ringPoints.Count - 1; i++)
+        {
+            int prevInt = i - 1;
+            int thisInt = i;
+            int nextInt = i + 1;
+            int nextNextInt = i + 2;
+
+            if (prevInt < 0)
+            {
+                //if central point, move to last //last point in list is same as first, so actual last is -2
+                prevInt += ringPoints.Count - 1;
+            }
+            if (nextInt >= ringPoints.Count)
+            {
+                //if next is over vertices length, put to start
+                nextInt -= ringPoints.Count;
+            }
+            if (nextNextInt >= ringPoints.Count)
+            {
+                nextNextInt -= ringPoints.Count;
+            }
+
+            Vector3 p0 = ringPoints[prevInt];
+            Vector3 p1 = ringPoints[thisInt];
+            Vector3 p2 = ringPoints[nextInt];
+            Vector3 p3 = ringPoints[nextNextInt];
+
+            //so order around cell is previous,p0,p1,next
+
+            Vector3 miterDirection0 = MiterDirection(p0, p1, p2, borderSizes[i]);
+            Vector3 miterDirection1 = MiterDirection(p1, p2, p3, borderSizes[i]);
+
+            /*
+            if (i == 0)
+                Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.red);
+            else
+                Debug.DrawLine(p1 + transform.position, p1 + transform.position + miterDirection0 * -borderSize, Color.blue);
+                */
+
+
+            Vector3 m0 = miterDirection0;// * -borderSize;  /// used to p0 + miters dir
+            Vector3 m1 = miterDirection1;// * -borderSize;
+            miters.Add(m0);
+            //miters.Add(m1);
+
+        }
+
+        return miters;
+    }
+
+    public static List<Vector3> CornerPoints(GameObject gameObject, float maxCornerSize)
     {
         List<Vector3> cornerPoints = new List<Vector3>();
 
         //create points around cell
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        Vector3[] vertices = gameObject.GetComponent<MeshFilter>().mesh.vertices;
 
       
         for (int i = 0; i < vertices.Length; i++)
@@ -471,7 +528,7 @@ public class Pavement : MonoBehaviour {
         return newMesh;
     }
 
-    Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2,float miterLength)
+    static Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2,float miterLength)
     {
         Vector3 miterDirection = new Vector3();
 

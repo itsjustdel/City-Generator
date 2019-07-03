@@ -113,7 +113,7 @@ MonoBehaviour:
   rootTriMultiplier: 1
   cellNumber: 1000
   lloydIterations: 3
-  minEdgeSize: 1
+  minEdgeSize: 10
   useSortedGeneration: 1
   drawCells: 0
   drawDeluany: 0
@@ -130,12 +130,15 @@ MonoBehaviour:
   weldCells: 0
   weldThreshold: 10
   makeSkyscraperTraditional: 1
-  doBuildControl: 0
+  doBuildControl: 1
   threshold: 2
   yardPoints: []
-  density: 4
+  density: 3
+  minSplitSize: 45
   cells: []
   cellsToAdd: []
+  cellsToSplit: []
+  cellsToMerge: []
   adjacentCellsCount: 0
   counter: 0
 --- !u!114 &114639802113931778

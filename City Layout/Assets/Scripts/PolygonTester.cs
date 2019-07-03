@@ -133,7 +133,7 @@ public class PolygonTester : MonoBehaviour
             if(earVertices.Count == 0)
             {
                // Debug.Break();
-                Debug.Log("Ear vertices 0, what to do? - SEEMS FINE!");
+                Debug.Log("Ear vertices 0, what to do? - SEEMS FINE! ??? is cell too small?");
                 Debug.Log("vertices count = " + vertices.Count);
                 break;
             }

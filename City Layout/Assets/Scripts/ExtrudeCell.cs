@@ -4,16 +4,18 @@ using System.Collections.Generic;
 public class ExtrudeCell : MonoBehaviour {
 
     public float depth = 1f;
-    public float scale = .9f;
+    public float scale = .8f;
     public bool uniqueVertices = false;
     public bool curveEdges = true;
-
+    public bool onlyScale = false;
     public Vector3 centroid;
     public GameObject extrudedCell;//save for tidy up later, skyscraper script moves postions around
     public bool doExtrudeAnimation = true;
     public float totalTimeForAnimation = .2f;
     bool finishedAnimating = false;
     bool showTints = false;
+
+    public Mesh originalMesh;
     private void Awake()
     {
         enabled = false;
@@ -22,15 +24,20 @@ public class ExtrudeCell : MonoBehaviour {
     // Use this for initialization
     public void Start()
     {
-       
+
+        originalMesh = new Mesh();
+        originalMesh.vertices = GetComponent<MeshFilter>().mesh.vertices;
+        originalMesh.triangles = GetComponent<MeshFilter>().mesh.triangles;
+
         Realign();
 
-        ScaleToMiter();
-
-
-        return;
-
+        if (scale < 1f) 
+            ScaleToMiter();
+        //ScaleToCenter();
         GetComponent<MeshRenderer>().enabled = false;
+
+        if (onlyScale)
+            return;
 
         if (doExtrudeAnimation && !curveEdges)
         {
