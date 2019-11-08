@@ -10,8 +10,20 @@ public class Spawner : MonoBehaviour {
     public bool reset;
     public GameObject prefab;
     public GameObject instance;
-	// Use this for initialization
-	void Start ()
+
+    public bool individually = false;
+    public bool simultaneously = false;
+    
+
+    public float buildingSpeed = 2f;
+    public int citySize = 100;
+
+    
+    public int density = 4;//not changin
+
+
+    // Use this for initialization
+    void Start ()
     {
         Place();
 	}
@@ -38,8 +50,16 @@ public class Spawner : MonoBehaviour {
           DestroyImmediate(instance);
         
         instance = Instantiate(prefab);
+        instance.GetComponent<MeshGenerator>().volume.x = citySize;
+        instance.GetComponent<MeshGenerator>().volume.z = citySize;
+        instance.GetComponent<MeshGenerator>().density = density;
+            
+         instance.GetComponent<BuildControl>().individually = individually;
+         instance.GetComponent<BuildControl>().simultaneously = simultaneously;
+
 
         if (resetOnTimer)
             timeStart = Time.time;
     }
 }
+

@@ -7,7 +7,7 @@ public class MergeCell : MonoBehaviour
     public GameObject target;
     public int mergedWith = 0;
     public bool keepMerging = true;
-    public int maxMerges = 3;
+    public int maxMerges = 1;
 
     public List<GameObject> previousCells = new List<GameObject>();//
     MeshGenerator meshGenerator;

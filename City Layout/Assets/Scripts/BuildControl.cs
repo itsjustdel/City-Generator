@@ -13,15 +13,20 @@ public class BuildControl : MonoBehaviour {
 
     public bool export = false;
 
-    public bool soloBuildings = false;
+    private bool soloBuildings = false;//not working
     public bool individually = false;
-    public bool simultaneously = true;
+    public bool simultaneously = false;
+
+    public bool finishedSimultaneous;
+
     public bool readyToBuild = false;
     bool cellsSetInactive = false;
     bool waitingForReset = false;
-    public float secondsToWaitTilNext = 1f;
+    public float secondsToWaitTilNext = 5f;
 
     public bool respawnWhenDone = true;
+
+    
     private void Start()
     {
         //make acopy
@@ -40,6 +45,9 @@ public class BuildControl : MonoBehaviour {
                 //start cell build -- look fro traditional
                 TraditionalSkyscraper tss = cells[0].GetComponent<TraditionalSkyscraper>();
                 tss.enabled = true;
+
+                //tell camera what cell we are building on                
+                Camera.main.GetComponent<CameraControl>().activeBuilding = cells[0];
 
                 //keep track from here
                 building = true;
@@ -77,6 +85,7 @@ public class BuildControl : MonoBehaviour {
         }
         else if(simultaneously)
         {
+            
             foreach (GameObject cell in cells)
                 cell.GetComponent<TraditionalSkyscraper>().enabled = true;
 
@@ -87,7 +96,8 @@ public class BuildControl : MonoBehaviour {
 
             if (allDone)
             {
-                GameObject.Find("Spawner").GetComponent<Spawner>().reset = true;
+                //GameObject.Find("Spawner").GetComponent<Spawner>().reset = true;
+                finishedSimultaneous = true;
             }
 
         }
@@ -100,10 +110,11 @@ public class BuildControl : MonoBehaviour {
                 for (int i = 0; i < cells.Count; i++)
                 {
                     cells[i].SetActive(false);
-                    cells[i].GetComponent<ExtrudeCell>().extrudedCell.SetActive(false);
+                    //cells[i].GetComponent<ExtrudeCell>().extrudedCell.SetActive(false);
+                    cells[i].transform.GetChild(0).gameObject.SetActive(false);
 
                     cells[i].transform.position = Vector3.zero;
-                    cells[i].GetComponent<ExtrudeCell>().extrudedCell.transform.position = Vector3.zero;
+                    //cells[i].GetComponent<ExtrudeCell>().extrudedCell.transform.position = Vector3.zero;
                 }
 
                 cellsSetInactive = true;
@@ -114,7 +125,8 @@ public class BuildControl : MonoBehaviour {
             {
 
                 cells[0].SetActive(true);
-                cells[0].GetComponent<ExtrudeCell>().extrudedCell.SetActive(true);
+                //cells[0].GetComponent<ExtrudeCell>().extrudedCell.SetActive(true);
+                cells[0].transform.GetChild(0).gameObject.SetActive(true);
                 //start cell build -- look fro traditional
                 TraditionalSkyscraper tss = cells[0].GetComponent<TraditionalSkyscraper>();
                 tss.enabled = true;
@@ -141,7 +153,7 @@ public class BuildControl : MonoBehaviour {
                     if (!waitingForReset)
                     {
                         waitingForReset = true;
-                        Invoke("ResetFlags", secondsToWaitTilNext);
+                        //Invoke("ResetFlags", secondsToWaitTilNext);
                     }
 
                 }
@@ -154,7 +166,8 @@ public class BuildControl : MonoBehaviour {
     {
         building = false;
         cells[0].SetActive(false);
-        cells[0].GetComponent<ExtrudeCell>().extrudedCell.SetActive(false);
+        //cells[0].GetComponent<ExtrudeCell>().extrudedCell.SetActive(false);
+        cells[0].transform.GetChild(0).gameObject.SetActive(false);
 
         //remove from working list
         cells.RemoveAt(0);

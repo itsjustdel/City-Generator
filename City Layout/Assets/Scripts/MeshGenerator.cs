@@ -260,24 +260,21 @@ public class MeshGenerator : MonoBehaviour {
         }
         
         //take small corners out to simplify the shape
-        Edges();
-        
+        Edges();        
 
         CalculateAdjacents();
-       // Edges();
-
-        SplitCells();
-
+       
         RemoveSmallEdges();//testing early in pipeline
         ReMesh(true);
 
+        SplitCells();
 
         //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
         Edges();
         CalculateAdjacents();
         //prob not necessary ^^
 
-
+        if(cells.Count > 6)
          MergeCells();
 
         
@@ -298,7 +295,13 @@ public class MeshGenerator : MonoBehaviour {
 
 
         //we will split only one cell at the moment
-        cellsToSplit.Add(cells[UnityEngine.Random.Range(0,cells.Count)]);
+        //add one to the build list to get it going
+        //cellsToSplit.Add(cells[UnityEngine.Random.Range(0,cells.Count)]);
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            cellsToSplit.Add(cells[i]);
+        }
         
 
         while (cellsToSplit.Count > 0)
@@ -338,7 +341,7 @@ public class MeshGenerator : MonoBehaviour {
 
             while (cellsToMerge.Count > 0)
             {
-                cellsToMerge[0].GetComponent<MergeCell>().maxMerges = UnityEngine.Random.Range(1, 3);
+                cellsToMerge[0].GetComponent<MergeCell>().maxMerges = UnityEngine.Random.Range(1, 1);
                 cellsToMerge[0].GetComponent<MergeCell>().Start();
 
                 cellsToMerge.RemoveAt(0);

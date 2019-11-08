@@ -20,86 +20,76 @@ public class SplitCell : MonoBehaviour
             meshGenerator = GameObject.FindWithTag("Code").GetComponent<MeshGenerator>();
         }
         GetComponent<MeshRenderer>().enabled = true;
+
         BreakDown();
     }
 
     void BreakDown()
     {
-        
-        
 
-        //for each cell in working list
-        //if large enough
+        //check to see if any edge on the cell is below the min edge size dictated by minSize variable
+        //if edge is too small, skyscraper will be unable to build
 
-      //  List<GameObject> returnedList = new List<GameObject>();
-
-        //make a list of cells which we will remove from the mesh generators cell list once we have finished loop
-        //List<GameObject> toRemove = new List<GameObject>();
-        List<GameObject> toAdd = new List<GameObject>();
-        
+        //grab edges, if not created yet, create
+        List<List<int>> edges = new List<List<int>>();
+        if (gameObject.GetComponent<AdjacentCells>() == null)
         {
-            //we need edge info for cells when splitting, add and work out - adding in mmesh gen
-           // workingList[0].AddComponent<AdjacentCells>().Edges();
-           // Debug.Log("edge count for working cell = " + workingList[0].GetComponent<AdjacentCells>().edges.Count);
-            if (gameObject.GetComponent<MeshRenderer>().bounds.size.magnitude > minSize) //avg around 80
-            {
+            AdjacentCells aJ = gameObject.AddComponent<AdjacentCells>();
+            aJ.Edges();
+            edges = aJ.edges;
+        }
+        else
+        {
+            edges = gameObject.GetComponent<AdjacentCells>().edges;
+        }
 
-                //remove the cell we are working from the main cell list
+
+        //check for min size
+        float distance = 0;
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+
+        for (int i = 0; i < edges.Count; i++)
+        {
+            float temp = Vector3.Distance(vertices[edges[i][0]], vertices[edges[i][1]]);
+            if (temp > distance)
+                distance = temp;
+        }
+
+        //if longest edge is over the size set in variable ( variable passed from mesh generator prefab)
+        if (distance > minSize)        
+        {
+
+            List<GameObject> toAdd =  Split(edges);
+
+            foreach (GameObject go in toAdd)
+            {
+                //main list of cells in mesh generator
+                meshGenerator.cells.Add(go);
+            }
+
+            if(toAdd.Count > 0)
+            {
+                //we received splits back
+                //remove the cell we are working on from the main cell list
                 meshGenerator.cells.Remove(gameObject);
-
-                toAdd = Split(gameObject);
-
-                gameObject.name = "ToRemove";
-                GetComponent<MeshRenderer>().enabled = false;
-
-            }
-            else //keep as is
-            {
-
-                //Debug.Log("keeping");
-                //toAdd.Add(workingList[0]);
-
-                //workingList[0].GetComponent<MeshRenderer>().enabled = true;  
-            }
-            
-            //get rid of this and move on to the next       
-
-
-           // workingList.RemoveAt(0);
-            
-        }
-
-        //now add all the cells we created to a list that will add/remove them once mesh generater script has worked its way through initial loop
-        //foreach (GameObject go in toRemove)
-        //meshGenerator.cellsToRemove.Add(go);
-        foreach (GameObject go in toAdd)
-        {
-            //work out adjacents for these new cells
-            meshGenerator.cells.Add(go);
-        }
-
-        /*
-        //redo edges for all adjacent cells
-        foreach (GameObject go in toAdd)
-        {
-            List<GameObject> adjacentCells = go.GetComponent<AdjacentCells>().adjacentCells;
-            for (int i = 0; i < adjacentCells.Count; i++)
-            {
-                adjacentCells[i].GetComponent<AdjacentCells>().Edges();
             }
 
-            //and also just for this cell too
-            go.GetComponent<AdjacentCells>().Edges();
+            //add to working list 
+            AddToWorkingSplitList(toAdd); 
+
+            //for debuggion purposes
+            //gameObject.name = "ToRemove";
+
+            //let there be no light
+            GetComponent<MeshRenderer>().enabled = false;
+
         }
-        */
-
-        AddInstant(toAdd);
-
-        
     }
 
-    void AddInstant(List<GameObject> cells)
+    void AddToWorkingSplitList(List<GameObject> cells)
     {
+        //adds to the cell list which we are working through. All cells in the list will be split (or at least checked if they can be split)
+
         for (int i = 0; i < cells.Count; i++)
         {
             meshGenerator.cellsToSplit.Add(cells[i]);
@@ -123,19 +113,36 @@ public class SplitCell : MonoBehaviour
         yield break;
     }
 
-    List<GameObject> Split(GameObject toSplit)
+    List<GameObject> Split( List<List<int>> edges)
     {
-        //which edges to split
-        List<List<int>> edgesByLength = new List<List<int>>();
-        List<List<Vector3>> splitVertices = LongestSplit(out edgesByLength, toSplit);
+        
 
-        //find point on adjacent cells so we can add geometry to them ( all points should haev a shared point on other cells
-        SharedEdge(edgesByLength);
+        //sort edges by length
+        List<List<int>> edgesByLength = EdgesSortedByLength(edges);
 
-        //return new cells
-        List<GameObject> cells = Cells(splitVertices);
+        //check to see if the two longest edges are connected to each other
+        bool connected = CheckForConnectedEdge(edgesByLength);
 
-        return cells;
+        if (connected)
+        {
+            //if connected edges cancel split. It creates too dramatic a shape for the building algorithm
+            //return empty list
+          
+            return new List<GameObject>();
+        }
+        else
+        {
+
+            List<List<Vector3>> splitVertices = LongestSplit(edgesByLength, edges);
+
+            //find point on adjacent cells so we can add geometry to them ( all points should haev a shared point on other cells
+            SharedEdge(edgesByLength);
+
+            //return new cells
+            List<GameObject> cells = Cells(splitVertices);
+
+            return cells;
+        }
     }
 
     void SharedEdge(List<List<int>> edgesByLength)
@@ -249,30 +256,14 @@ public class SplitCell : MonoBehaviour
 
       //////  Debug.DrawLine(vertices[pair[0]], vertices[pair[1]], Color.blue);
       //  Debug.Break();
-    }    
+    }
 
-    List<List<Vector3>> LongestSplit(out List<List<int>> edgesSortedByLength, GameObject toSplit)
+    List<List<int>> EdgesSortedByLength(List<List<int>> edges)
     {
-       // GetComponent<MeshRenderer>().enabled = true;
-
-        //we will return a list of vector3a for each split (2)
-        List<List<Vector3>> splitVertices = new List<List<Vector3>>();
-
-        Mesh mesh = toSplit.GetComponent<MeshFilter>().mesh;
+        Mesh mesh = gameObject.GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
 
-        //finds the two longest edges, then creates a line between them
-        List<List<int>> edges = new List<List<int>>();
-        if (toSplit.GetComponent<AdjacentCells>() == null)
-        {
-            AdjacentCells aJ = toSplit.AddComponent<AdjacentCells>();
-            aJ.Edges();
-            edges = aJ.edges;
-        }
-        else
-        {
-            edges = toSplit.GetComponent<AdjacentCells>().edges;
-        }
+       
         //order by length
         List<List<int>> edgesByLength = new List<List<int>>(edges);
         edgesByLength.Sort(delegate (List<int> a, List<int> b)
@@ -281,8 +272,57 @@ public class SplitCell : MonoBehaviour
             .CompareTo(
               Vector3.Distance(vertices[b[0]], vertices[b[1]]));
         });
-        //make largest number first in list
+
+        //reverse so largest is first. Sort() organises from low to high
         edgesByLength.Reverse();
+
+        return edgesByLength;
+    }
+
+    bool CheckForConnectedEdge(List<List<int>> edgesByLength)
+    {
+        bool connected = false;
+
+        //check to see if the two longest edges are connected to each other
+        Mesh mesh = gameObject.GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+
+        Vector3 p0 = vertices[edgesByLength[0][0]];
+        Vector3 p1 = vertices[edgesByLength[0][1]];
+        Vector3 p2 = vertices[edgesByLength[1][0]];
+        Vector3 p3 = vertices[edgesByLength[1][1]];
+
+        if (p0 == p2 || p0 == p3
+            || p1 == p2 || p1 == p3)
+        {
+            connected = true;
+
+            bool draw = true;
+            if (draw)
+            {
+                Debug.DrawLine(p0, p1, Color.red);
+                Debug.DrawLine(p2, p3, Color.blue);
+
+            }
+
+        }
+      
+        return connected;
+    }
+
+    List<List<Vector3>> LongestSplit(List<List<int>> edgesByLength, List<List<int>> edges)
+    {
+       // GetComponent<MeshRenderer>().enabled = true;
+
+        //we will return a list of vector3a for each split (2)
+        List<List<Vector3>> splitVertices = new List<List<Vector3>>();
+
+        Mesh mesh = gameObject.GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+
+      
+
+      
 
        // Debug.DrawLine(vertices[edgesByLength[0][0]], vertices[edgesByLength[0][1]], Color.cyan);
         //Debug.DrawLine(vertices[edgesByLength[1][0]], vertices[edgesByLength[1][1]]);
@@ -364,7 +404,7 @@ public class SplitCell : MonoBehaviour
             }
         }
 
-        edgesSortedByLength = edgesByLength;
+       
         return splitVertices;
 
         

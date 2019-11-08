@@ -7,13 +7,15 @@ public class Pavement : MonoBehaviour {
 
     public float depth = 3f;
     public float borderSize = 2f;
-
+   
     public float cornerSizeScaler = .1f;
-    public float maxCornerSize = 1f;//maybe dont need now i have set min edge size in mesh gen
+    public float maxCornerSize = 5f;//maybe dont need now i have set min edge size in mesh gen
     public float curveAccuracyCorners = 3f;//set quite low atm, is a bottke neck but accuracy doesn't need to be high a pavement//making this lower makes hexagonny style shapes
     public float curveStepSize = .5f;
     BezierSpline bezierForCorners;
     public GameObject pavement;
+
+    public List<Vector3> miters = new List<Vector3>();
     // Use this for initialization
     private void Awake()
     {
@@ -48,7 +50,7 @@ public class Pavement : MonoBehaviour {
         extrusion.transform.position = transform.position;
 
         //work out miters
-        List<Vector3> miters = Miters(cornerPoints, borderSize);
+        miters = Miters(cornerPoints, borderSize);
         PositionsBetweenCorners(miters);
 
     }    
@@ -395,6 +397,7 @@ public class Pavement : MonoBehaviour {
                 {
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = ringPointsCorner[a][b] + transform.position;
+                    c.name = "pave";
                     //c.transform.localScale *= 0.1f;
                     Destroy(c, 3);
                 }
@@ -423,6 +426,13 @@ public class Pavement : MonoBehaviour {
             }
         }
 
+        if(finalRingVertices.Count == 0)
+        {
+           // Debug.Break();
+            Debug.Log("Something has gone wrong");
+            //reset
+            GameObject.FindGameObjectWithTag("Spawner").GetComponent<Spawner>().reset = true;
+        }
         //make final loop point
         finalRingVertices.Add(finalRingVertices[0]);
 

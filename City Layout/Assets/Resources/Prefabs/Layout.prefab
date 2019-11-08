@@ -109,7 +109,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   materials: []
   cubePrefab: {fileID: 0}
-  volume: {x: 120, y: 0, z: 120}
+  volume: {x: 80, y: 0, z: 80}
   rootTriMultiplier: 1
   cellNumber: 1000
   lloydIterations: 3
@@ -133,8 +133,8 @@ MonoBehaviour:
   doBuildControl: 1
   threshold: 2
   yardPoints: []
-  density: 3
-  minSplitSize: 45
+  density: 2
+  minSplitSize: 40
   cells: []
   cellsToAdd: []
   cellsToSplit: []
@@ -157,9 +157,8 @@ MonoBehaviour:
   building: 0
   builtSoFar: 0
   export: 0
-  soloBuildings: 0
   individually: 0
-  simultaneously: 1
+  simultaneously: 0
   readyToBuild: 0
   secondsToWaitTilNext: 1
-  respawnWhenDone: 1
+  respawnWhenDone: 0

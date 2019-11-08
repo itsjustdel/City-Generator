@@ -4,14 +4,15 @@ using System.Collections.Generic;
 public class ExtrudeCell : MonoBehaviour {
 
     public float depth = 1f;
-    public float scale = .8f;
+    public float scale = .7f;
+    public float pavementDepth = 3f;//size in metres
     public bool uniqueVertices = false;
     public bool curveEdges = true;
     public bool onlyScale = false;
     public Vector3 centroid;
     public GameObject extrudedCell;//save for tidy up later, skyscraper script moves postions around
     public bool doExtrudeAnimation = true;
-    public float totalTimeForAnimation = .2f;
+    public float totalTimeForAnimation = 2f;
     bool finishedAnimating = false;
     bool showTints = false;
 
@@ -104,6 +105,9 @@ public class ExtrudeCell : MonoBehaviour {
         //alos, set parent cell at height of extruded cell
         //transform.position += Vector3.up *depth;//was mucking up splines
         //start build control
+
+        //wait a little before building
+        yield return new WaitForSeconds(0.5f);
         GameObject.FindGameObjectWithTag("Code").GetComponent<BuildControl>().readyToBuild = true;
 
         if (showTints)
@@ -207,7 +211,7 @@ public class ExtrudeCell : MonoBehaviour {
            // Debug.DrawLine(p0 + transform.position, p0 + transform.position + miter0, Color.green);
             //Debug.Break();
 
-            p0 += miter0 * 1f;//var
+            p0 += miter0 * pavementDepth;//var
             vertices[edges[i][0]] = p0;
 
         }

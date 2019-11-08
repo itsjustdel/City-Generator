@@ -197,7 +197,12 @@ public class AdjacentCells : MonoBehaviour {
             {
                 nextNextInt -= verts.Length - 1;
             }
-
+            if (verts.Length == 2)
+            {
+                Debug.Log("verts length = " + verts.Length);
+                Debug.Log("next next " + nextNextInt);
+                Debug.Log(gameObject.name.ToString());
+            }
             Vector3 p0 = verts[prevInt];
             Vector3 p1 = verts[thisInt];
             Vector3 p2 = verts[nextInt];

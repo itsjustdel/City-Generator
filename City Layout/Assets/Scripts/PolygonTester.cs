@@ -135,7 +135,9 @@ public class PolygonTester : MonoBehaviour
                // Debug.Break();
                 Debug.Log("Ear vertices 0, what to do? - SEEMS FINE! ??? is cell too small?");
                 Debug.Log("vertices count = " + vertices.Count);
-                break;
+                Debug.Log("resetting world");
+                GameObject.FindGameObjectWithTag("Spawner").GetComponent<Spawner>().reset = true;
+                return null;
             }
             Vertex earVertex = earVertices[0];
 
