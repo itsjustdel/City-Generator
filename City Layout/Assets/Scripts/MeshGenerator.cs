@@ -47,7 +47,8 @@ public class MeshGenerator : MonoBehaviour {
 
     public bool extrudeCells;
     public bool walls = true;
-    
+    public bool mergeCells = true;
+    public bool addToCells = true;
     public bool weldCells = true;
     public float weldThreshold = 10f;//how wide should minimum  ledge size be?
     public bool makeSkyscraperTraditional = true;
@@ -277,16 +278,16 @@ public class MeshGenerator : MonoBehaviour {
         CalculateAdjacents();
         //prob not necessary ^^
 
-
+        if(mergeCells)
          MergeCells();
 
         
         //choose colours for each cell
         SetPalletes();
 
-        
-        //add ...
-        AddToCells();
+        if(addToCells)
+            //add ...
+            AddToCells();
                 
      //   yield break;
     }
