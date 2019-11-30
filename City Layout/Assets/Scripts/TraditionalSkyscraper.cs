@@ -636,12 +636,15 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
             //work out points curving round corner
             List<List<Vector3>> ringCornerPoints = RingCornerPoints(ringEdgePoints, cornerPoints);
+
             //make unique points instead of a ring of sequential points - allows triangles their own vertices.
             List<List<Vector3>> uniqueEdgePoints = AddDuplicates(ringEdgePoints);
             List<List<Vector3>>  uniqueCornerPoints = AddDuplicates(ringCornerPoints);
 
             //organise list in to one list travelling round ring
             List<Vector3> ringPointsUnique = RingPoints(uniqueEdgePoints, uniqueCornerPoints);
+
+            
             
             //now we have an organised ring of points, extrude these upwards and create windows
             List<List<Vector3>> extrudedRings = BuildHeightsForFloor(ringPointsUnique);
@@ -693,8 +696,17 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     yield return new WaitForFixedUpdate();
                 }
             }
-            //else if (animateBuild)
-                yield return new WaitForEndOfFrame();
+
+
+            Interiors.CreateVoronoi(storey, ringPointsUnique);
+
+            yield break;
+
+
+
+            //else if (animateBuild)     
+            yield return new WaitForEndOfFrame();
+            
              
 
         }
@@ -1748,6 +1760,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
         GameObject underSide = TriangulateRing(ringPoints, flip);
         underSide.transform.parent = parent.transform;
         underSide.name = "UnderSide";
+        underSide.layer = LayerMask.NameToLayer("Roof");//for interior planning
+        
 
         floorAndCeiling.Add(roof);
         floorAndCeiling.Add(underSide);

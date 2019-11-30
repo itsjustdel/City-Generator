@@ -44,6 +44,7 @@ public class MeshGenerator : MonoBehaviour {
 	
 	public bool fillWithRandom;
 	public bool fillWithPoints;
+    public bool interior = false;
 
     public bool extrudeCells;
     public bool walls = true;
@@ -83,7 +84,7 @@ public class MeshGenerator : MonoBehaviour {
         tolerance = minEdgeSize;//testing
 
 
-        //StartCoroutine("Lloyds");
+       
 
         Lloyds();
 
@@ -142,48 +143,63 @@ public class MeshGenerator : MonoBehaviour {
             }
             
 
-
-            //Go get points from Road Curve       
             DualGraph dualGraph = new DualGraph(volume);
 
             //Debug.Log("cells count before split = " + cells.Count);
-            cells.Clear();      
+            cells.Clear();
 
-            cellNumber = (int)volume.x / density;
 
-            Vector3[] points = new Vector3[cellNumber];
-            //Debug.Log(points.Length);
-            if (count > 0)
-                points = new Vector3[centroids.Count];
-
-            if(count > 0)
+            if (!interior)
             {
-                fillWithPoints = true;
-                fillWithRandom = false;
-            }
 
-            GenSortedRandCells(ref points);
+                cellNumber = (int)volume.x / density;
+
+                Vector3[] points = new Vector3[cellNumber];
+
+                if (count > 0)
+                    points = new Vector3[centroids.Count];
 
 
-           // if (count == 1)
-            {
-                for (int i = 0; i < points.Length; i++)
+                //switch to relaxing after initial first randomisation
+                if (count > 0)
                 {
-                  //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                  //  c.transform.position = points[i];
-                  //   c.name = count.ToString() + " " + i.ToString();
+                    fillWithPoints = true;
+                    fillWithRandom = false;
                 }
+
+                GenSortedRandCells(ref points);
+
+
+
+                centroids.Clear();
+
+                dualGraph.DefineCells(points, rootTriMultiplier);
+                dualGraph.ComputeForAllSortedCells();
+                // dualGraph.ComputeForAllCells();
+
+                dualGraph.PrepareCellsForMesh();
+
             }
+            else
+            {
+                cellNumber = yardPoints.Count;
+
+                Vector3[] points = new Vector3[cellNumber];
+
+                GenSortedRandCellsForInterior(ref points);
+
+                centroids.Clear();
+
+                dualGraph.DefineCells(points, rootTriMultiplier);
+                dualGraph.ComputeForAllSortedCells();
+                // dualGraph.ComputeForAllCells();
+
+                dualGraph.PrepareCellsForMesh();
+            }
+            
+            
 
 
-
-            centroids.Clear();
-
-            dualGraph.DefineCells(points, rootTriMultiplier);
-            dualGraph.ComputeForAllSortedCells();
-           // dualGraph.ComputeForAllCells();
-
-            dualGraph.PrepareCellsForMesh();
             
             //work out centroids for next iteration 
             for (int i = 0; i < dualGraph.cells.Count; i++)
@@ -258,33 +274,44 @@ public class MeshGenerator : MonoBehaviour {
 
            
         }
-        
-        //take small corners out to simplify the shape
-        Edges();        
 
-        CalculateAdjacents();
-       
-        RemoveSmallEdges();//testing early in pipeline
-        ReMesh(true);
+        //city layout
+        if (!interior)
+        {
+            //take small corners out to simplify the shape
+            Edges();
 
-        SplitCells();
+            CalculateAdjacents();
 
-        //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
-        Edges();
-        CalculateAdjacents();
-        //prob not necessary ^^
+            RemoveSmallEdges();//testing early in pipeline
+            ReMesh(true);
 
-        if(cells.Count > 6)
-         MergeCells();
+            SplitCells();
 
-        
-        //choose colours for each cell
-        SetPalletes();
+            //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
+            Edges();
+            CalculateAdjacents();
+            //prob not necessary ^^
 
-        
-        //add ...
-        AddToCells();
-                
+            if (cells.Count > 6)
+                MergeCells();
+
+
+            //choose colours for each cell
+            SetPalletes();
+
+
+            //add ...
+            AddToCells();
+        }
+        else
+        {
+            //interiors
+            for (int i = 0; i < cells.Count; i++)
+            {
+                cells[i].GetComponent<MeshRenderer>().enabled = true;
+            }
+        }
      //   yield break;
     }
 
@@ -821,10 +848,39 @@ public class MeshGenerator : MonoBehaviour {
 			p.Values.CopyTo(points,0);
 		}
 	}
-	/// <summary>
-	/// Generates the mesh.
-	/// </summary>
-	void GenerateMesh(DualGraph dualGraph)
+
+    private void GenSortedRandCellsForInterior(ref Vector3[] points)
+    {
+        SortedList<float, Vector3> p = new SortedList<float, Vector3>();
+
+
+
+      
+
+        if (fillWithPoints)
+        {
+            cellNumber = yardPoints.Count;
+
+            for (int i = 0; i < yardPoints.Count; i++)
+            {
+                try
+                {
+                    p.Add(yardPoints[i].x, yardPoints[i]);
+                }
+                catch (System.ArgumentException)
+                {
+
+                    Array.Resize(ref points, points.Length - 1);
+                    cellNumber -= 1;
+                }
+            }
+            p.Values.CopyTo(points, 0);
+        }
+    }
+    /// <summary>
+    /// Generates the mesh.
+    /// </summary>
+    void GenerateMesh(DualGraph dualGraph)
     {
     //    Debug.Log("prepare cells for mesh start");
         dualGraph.PrepareCellsForMesh();
@@ -967,6 +1023,7 @@ public class MeshGenerator : MonoBehaviour {
 
     void AddToCells()
     {
+     
         GetComponent<BuildControl>().cells.Clear();
 
         for (int i = 0; i < cells.Count; i++)
