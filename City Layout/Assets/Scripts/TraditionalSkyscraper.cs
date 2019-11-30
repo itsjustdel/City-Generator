@@ -5,6 +5,7 @@ using System.Linq;
 
 public class TraditionalSkyscraper : MonoBehaviour {
 
+    public bool addMeshCollidersAndClickers = true;
     public bool drawLocalSplines;
     public bool reset = false;
     public bool updateEveryFrame = false;
@@ -147,6 +148,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         //lopping function to build mesh
         StartCoroutine("BuildFloors");
+
+      
 	}
 	
 	// Update is called once per frame
@@ -191,6 +194,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
         }
 
     }
+
+
 
     void ValuesBuildingShape()
     {
@@ -693,11 +698,19 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     yield return new WaitForFixedUpdate();
                 }
             }
+
+            //convex to wrap around
+            storey.AddComponent<MeshCollider>().convex = true;
+            storey.AddComponent<ObjectClick>();
+
             //else if (animateBuild)
-                yield return new WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
              
 
         }
+
+        //add mesh colliders and object clicks (for cam control)
+     
 
         //hooray!
         finishedBuilding = true;
@@ -1586,6 +1599,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         meshFilter.mesh = mesh;
 
+        
+
         return storey;
     }
 
@@ -1800,6 +1815,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
         mesh.RecalculateBounds();
         
     }
+
+   
 
     void Height()
     {

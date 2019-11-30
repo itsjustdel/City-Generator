@@ -31,7 +31,14 @@ public class Spawner : MonoBehaviour {
 	// Update is called once per frame
 	void Update ()
     {
-        if(reset == true)
+
+        if (Input.GetKey("escape"))
+        {
+            Application.Quit();
+        }
+
+
+        if (reset == true)
         {
             Place();
             reset = false;

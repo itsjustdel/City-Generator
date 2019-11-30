@@ -5,9 +5,12 @@ using UnityEngine;
 public class CameraControl : MonoBehaviour {
     // How many units should we keep from the players
 
-   // public bool focusOnSoloBuilding = true;
+    // public bool focusOnSoloBuilding = true;
 
-
+    public float mouseX = 1f;
+    public float mouseY = 1f;
+    public float mouseZoom = 5f;
+    public float mouseZoomLarge = 5f;
     public float zoomFactor = 1.5f;
     public float zoomForSolo = 60f;
     public float zoomDampener = 1f;
@@ -30,6 +33,8 @@ public class CameraControl : MonoBehaviour {
 
     public float shadowMod = 1.5f;
 
+    public bool focusOnClicked = false;
+
     
 
     // Use this for initialization
@@ -44,14 +49,16 @@ public class CameraControl : MonoBehaviour {
 	}
 	
 	// Update is called once per frame
-	void FixedUpdate ()
+	void Update ()
     {
+        if (GameObject.FindGameObjectWithTag("Code")==null)
+            return;
 
         mg = GameObject.FindGameObjectWithTag("Code").GetComponent<MeshGenerator>();
         buildControl = GameObject.FindGameObjectWithTag("Code").GetComponent<BuildControl>();
 
 
-        RotateCam();
+        
 
         //if cells havent been created, wait
         if (mg.cells.Count == 0)
@@ -60,7 +67,7 @@ public class CameraControl : MonoBehaviour {
         Vector3 centre = Vector3.zero;
         float highest = 0f;
 
-        if (buildControl.building && buildControl.individually)
+        if ((buildControl.building && buildControl.individually) || focusOnClicked)
         {
             
             transform.parent.transform.position = Vector3.Lerp(transform.parent.transform.position, activeBuilding.transform.position,followTimeDelta);
@@ -129,14 +136,65 @@ public class CameraControl : MonoBehaviour {
             transform.position = Vector3.Slerp(transform.position, target, followTimeDelta);
         }
 
+        RotateCam();
+        ZoomCam();
+
+        //clamp
+        if (transform.position.y < 0.3f)
+            transform.position = new Vector3(transform.position.x, 0.3f, transform.position.z);
+
         //shadows
         QualitySettings.shadowDistance = Vector3.Distance(transform.position, Vector3.zero) * shadowMod;
     }
 
     void RotateCam()
     {
-        transform.parent.rotation *= Quaternion.Euler(0, rotSpeed*Time.deltaTime, 0);
+        if (Input.GetMouseButton(1))
+        {
+
+            float x = (Input.GetAxis("Horizontal")/Screen.width )* mouseX ;
+
+            transform.parent.rotation *= Quaternion.Euler(0, x, 0);
+
+            float y = (Input.GetAxis("Vertical")/Screen.height) * mouseY ;
+
+            if(transform.localEulerAngles.y <=90)
+                transform.localRotation *= Quaternion.Euler(-y, 0, 0);
+            else
+                transform.localRotation = Quaternion.Euler(90, 0, 0);
+
+        }
+
+
+        if (focusOnClicked)
+        {
+        
+        }
+        else
+            transform.parent.rotation *= Quaternion.Euler(0, rotSpeed*Time.deltaTime, 0);
     }
+
+    void ZoomCam()
+    {
+        if (buildControl.individually && activeBuilding != null)
+        {
+            zoomForSolo -= Input.mouseScrollDelta.y * mouseZoom ;
+
+            if (zoomForSolo < 30)
+                zoomForSolo = 30;
+        }
+        else if(buildControl.simultaneously)
+        {
+            zoomFactor -= Input.mouseScrollDelta.y * mouseZoomLarge ;
+
+            if (zoomFactor < 0.5f)
+                zoomFactor= 0.5f;
+
+            if (zoomFactor > 10f)
+                zoomFactor = 10f;
+        }
+    }
+
     public void FixedCameraFollowSmooth(Camera cam, List<GameObject> players)
     {
         if (mg == null)

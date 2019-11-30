@@ -46,8 +46,9 @@ public class BuildControl : MonoBehaviour {
                 TraditionalSkyscraper tss = cells[0].GetComponent<TraditionalSkyscraper>();
                 tss.enabled = true;
 
-                //tell camera what cell we are building on                
-                Camera.main.GetComponent<CameraControl>().activeBuilding = cells[0];
+                //tell camera what cell we are building on, if user hasnt already taken control
+                if(!Camera.main.GetComponent<CameraControl>().focusOnClicked)
+                    Camera.main.GetComponent<CameraControl>().activeBuilding = cells[0];
 
                 //keep track from here
                 building = true;
