@@ -306,11 +306,14 @@ public class MeshGenerator : MonoBehaviour {
         }
         else
         {
-            //interiors
+            //interiors - each floor
             for (int i = 0; i < cells.Count; i++)
             {
                 cells[i].GetComponent<MeshRenderer>().enabled = true;
+                
             }
+
+            
         }
      //   yield break;
     }

@@ -697,8 +697,12 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 }
             }
 
-
-            Interiors.CreateVoronoi(storey, ringPointsUnique);
+            //interiors
+            //drop some mesh data to help later when planning interior
+            Interiors interiors = storey.AddComponent<Interiors>();
+            interiors.ringPointsUnique = ringPointsUnique;
+            interiors.cornerPoints = cornerPoints;
+           // interiors.CreateVoronoi();
 
             yield break;
 
