@@ -643,8 +643,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
             //organise list in to one list travelling round ring
             List<Vector3> ringPointsUnique = RingPoints(uniqueEdgePoints, uniqueCornerPoints);
-
-            
             
             //now we have an organised ring of points, extrude these upwards and create windows
             List<List<Vector3>> extrudedRings = BuildHeightsForFloor(ringPointsUnique);
@@ -700,9 +698,9 @@ public class TraditionalSkyscraper : MonoBehaviour {
             //interiors
             //drop some mesh data to help later when planning interior
             Interiors interiors = storey.AddComponent<Interiors>();
-            interiors.ringPointsUnique = ringPointsUnique;
+            interiors.ringPoints = RingPoints(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
             interiors.cornerPoints = cornerPoints;
-           // interiors.CreateVoronoi();
+           
 
             yield break;
 
