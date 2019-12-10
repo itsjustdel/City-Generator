@@ -1624,7 +1624,7 @@ MonoBehaviour:
   individually: 1
   simultaneously: 0
   buildingSpeed: 5
-  citySize: 60
+  citySize: 100
   density: 4
 --- !u!1 &1792139506
 GameObject:
@@ -1878,12 +1878,12 @@ PrefabInstance:
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
       propertyPath: m_BoundingSphereOverride.w
-      value: 1e-45
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
       propertyPath: m_BoundingSphereOverride.x
-      value: 3e-45
+      value: NaN
       objectReference: {fileID: 0}
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
