@@ -698,7 +698,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             //interiors
             //drop some mesh data to help later when planning interior
             Interiors interiors = storey.AddComponent<Interiors>();
-            interiors.ringPoints = RingPoints(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
+            interiors.ringPoints = RingPointsForInterior(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
             interiors.cornerPoints = cornerPoints;
            
 
@@ -1105,6 +1105,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = ringPointsCorner[a][b];
                     c.transform.localScale *= 0.1f;
+                    c.name = "ring corner point";
                     Destroy(c, 3);
                 }
             }
@@ -1146,6 +1147,44 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 c.transform.localScale *= 0.1f;
                 Destroy(c, 3);
                 
+            }
+        }
+
+        return finalRingVertices;
+    }
+
+    List<Vector3> RingPointsForInterior(List<List<Vector3>> ringEdgePoints,List<List<Vector3>> ringCornerPoints)
+    {
+        List<Vector3> finalRingVertices = new List<Vector3>();
+
+        for (int i = 0; i < ringEdgePoints.Count; i++)
+        {
+            for (int j = ringEdgePoints[i].Count -1; j < ringEdgePoints[i].Count; j++)//only add last
+            {
+                finalRingVertices.Add(ringEdgePoints[i][j]);
+
+            }
+
+            for (int j = 0; j < ringCornerPoints[i].Count; j++)
+            {
+                finalRingVertices.Add(ringCornerPoints[i][j]);
+            }
+        }
+
+        //make final loop point
+        finalRingVertices.Add(finalRingVertices[0]);
+
+        bool showCubes = false;
+        if (showCubes)
+        {
+            for (int a = 0; a < finalRingVertices.Count; a++)
+            {
+
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = finalRingVertices[a];
+                c.transform.localScale *= 0.1f;
+                Destroy(c, 3);
+
             }
         }
 

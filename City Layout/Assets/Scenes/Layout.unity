@@ -1621,8 +1621,8 @@ MonoBehaviour:
   reset: 0
   prefab: {fileID: 1671037548849596, guid: dea6bace9e5f36044ad02fb2e07522b4, type: 3}
   instance: {fileID: 0}
-  individually: 1
-  simultaneously: 0
+  individually: 0
+  simultaneously: 1
   buildingSpeed: 5
   citySize: 100
   density: 4
@@ -1878,12 +1878,12 @@ PrefabInstance:
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
       propertyPath: m_BoundingSphereOverride.w
-      value: 0
+      value: 1e-45
       objectReference: {fileID: 0}
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
       propertyPath: m_BoundingSphereOverride.x
-      value: NaN
+      value: 3e-45
       objectReference: {fileID: 0}
     - target: {fileID: 108851911994179616, guid: fc8fee333b53ca84f9397e0e7890f2fd,
         type: 3}
