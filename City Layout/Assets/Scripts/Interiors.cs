@@ -14,7 +14,7 @@ public class Interiors : MonoBehaviour
     public int corners = 0;
 
     public bool snip;
-
+    public bool fullReset; 
     GameObject interiorObj;
     int frames = 0;
 
@@ -46,6 +46,12 @@ public class Interiors : MonoBehaviour
             frames++;
 
             //now check for line intersections and adjust mesh
+        }
+
+        if(fullReset)
+        {
+            ClearAndReset();
+            fullReset = false;
         }
     }
 
@@ -110,13 +116,36 @@ public class Interiors : MonoBehaviour
             modV3 *= limit;
             //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
             //c.transform.position = shootFrom + modV3;
+            bool add = false;
+            Vector3 toAdd = Vector3.zero;
             if (Physics.Raycast(shootFrom + modV3, Vector3.up, out hit, 20f, LayerMask.GetMask("Roof")))
             {
-                //    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                //  c.transform.position = hit.point;
+                //points can't be too near a ring point - breaks interesect code
                 Vector3 zeroYHitPoint = hit.point - gameObject.transform.position;
                 zeroYHitPoint = new Vector3(zeroYHitPoint.x, 0f, zeroYHitPoint.z);
-                mg.yardPoints.Add(zeroYHitPoint);
+                for (int a = 0; a < ringPoints.Count; a++)
+                {
+                    if (Vector3.Distance(ringPoints[a], hit.point) < 1f)
+                    {
+                        //skip, dont add
+                        add = false;
+                    }
+                    else
+                    {
+                        add = true;
+                        toAdd = zeroYHitPoint;
+                    }
+                }
+
+                //    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //  c.transform.position = hit.point;
+
+                
+            }
+
+            if(add)
+            {
+                mg.yardPoints.Add(toAdd);
             }
             else
                 i--;
@@ -669,6 +698,10 @@ public class Interiors : MonoBehaviour
                 c.transform.position = newPoints[a];
                 c.name = "np";
             }
+
+            //flatten
+            newPoints[a] = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
+
             avg += newPoints[a];
         }
 
