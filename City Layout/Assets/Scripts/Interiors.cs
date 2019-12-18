@@ -9,6 +9,7 @@ public class Interiors : MonoBehaviour
         
     public List<Vector3> ringPoints = new List<Vector3>();
     public List<Vector3> cornerPoints = new List<Vector3>();
+    public int corners = 0;
 
     public bool snip;
     private void Start()
@@ -73,7 +74,7 @@ public class Interiors : MonoBehaviour
         MeshGenerator mg = interiorObj.AddComponent<MeshGenerator>();
 
         List<Vector3> pointsInside = new List<Vector3>();
-        int cap = 5;
+        
         //find random positions within floor
 
         Vector3 shootFrom = gameObject.transform.position - 10f * Vector3.up;
@@ -81,7 +82,9 @@ public class Interiors : MonoBehaviour
         //c.transform.position = shootFrom;
         GameObject underSide = gameObject.transform.Find("UnderSide").gameObject;
         underSide.AddComponent<MeshCollider>();
-
+        int cap = (int)((underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z )*0.5f);// 5;
+        cap = corners;
+        //?work needs done for this
         //add random
         RaycastHit hit;
         float limit = (underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z)*.8f;
@@ -622,9 +625,29 @@ public class Interiors : MonoBehaviour
                         //starting inside
                         if (intersects.Count == 0)// && inside)
                         {
-                            Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.blue);//add
-                            newPoints.Add(vertices[edge[0]]);
-                            newPoints.Add(vertices[edge[1]]);
+                            //had one case where intersect was marginal and was adding edge even though it was outside? expensive edge case check
+                            bool insideSecond = false;
+                            shootFrom = vertices[edge[1]];
+                            shootFrom -= Vector3.up;
+                            if (Physics.Raycast(shootFrom, Vector3.up, out hit, 2f, LayerMask.GetMask("Roof")))////*** if ditance check for voronoi placement, remove this
+                            {
+                                if (hit.transform.gameObject == underSide)
+                                {
+                                    insideSecond = true;
+                                }
+                            }
+                            if (insideSecond)
+                            {
+                                Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.blue);//add
+                                newPoints.Add(vertices[edge[0]]);
+                                newPoints.Add(vertices[edge[1]]);//?
+                            }
+                            else
+                            {
+                                Debug.Log("Remove marginal edge ? sometimes works sometimes doesnt - redo? voronoi pattern is right on ringpoints edge- could do a distance check when placing vor points - distance to ring point");
+                                Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.magenta);//add
+                            }
+
                         }
 
                         else if (intersects.Count == 1)// && inside)
@@ -641,7 +664,7 @@ public class Interiors : MonoBehaviour
                             //start at the ring index of the intersects
                             int start = intersectIndexes[0];
 
-                            AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[0],true);
+                            AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[0]);
 
                         }
                     }
@@ -662,9 +685,7 @@ public class Interiors : MonoBehaviour
 
                 else if (intersects.Count == 2)
                 {
-                    Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.red);//add from intersection
-
-                    //first we need to organise intersects so that that first intersect is close to edge point [0]
+                    //organise intersects by distance from edge point[0]
                     if (Vector3.Distance(vertices[edge[0]], intersects[0]) > Vector3.Distance(vertices[edge[0]], intersects[1]))
                     {
                         Vector3 temp = intersects[0];
@@ -675,17 +696,45 @@ public class Interiors : MonoBehaviour
                         intersectIndexes[0] = intersectIndexes[1];
                         intersectIndexes[1] = tempInt;
                     }
-                    newPoints.Add(intersects[0]);
-                    newPoints.Add(intersects[1]);
 
-                    //now find ring points to next intersect
-                    if(intersectIndexes.Count == 0)
+                    //starting outside and finsihing outside
+                    if (!inside)
                     {
-                        //internal? kidney bean?
-                    }
-                    int start = intersectIndexes[1];
+                        Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.red);//add from intersection
+                        //first we need to organise intersects so that that first intersect is close to edge point [0]
+                      
+                        newPoints.Add(intersects[0]);
+                        newPoints.Add(intersects[1]);
 
-                    newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[1],true);
+                        //now find ring points to next intersect
+                        if (intersectIndexes.Count == 0)
+                        {
+                            //internal? kidney bean?
+                        }
+                        int start = intersectIndexes[1];
+
+                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start, intersects[1]);
+                    }
+                    //starting inside and finishin inside
+                    else
+                    {
+                        Debug.Log("Rare Inside 2 intersects - debug line yellow - redo voronoi - two tiny rooms from one interior shape cell - not worth figuring out method");
+                            
+                        Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.yellow);//add from intersection
+
+                        /*
+                        //add intersect
+                        newPoints.Add(intersects[0]);
+
+                        //add ring points to next intersect
+                        int start = intersectIndexes[0];
+                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start, intersects[0]);
+
+                        //now add edge[1]
+                        newPoints.Add(vertices[edge[1]]);
+                        */
+
+                    }
                     
                 }
                 else if (intersects.Count ==3)
@@ -730,10 +779,10 @@ public class Interiors : MonoBehaviour
                         newPoints.Add(intersects[0]);
                         //run to next intersect
                         int start = intersectIndexes[0];
-                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[0],false);
+                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[0]);
                         //add next ring part (internal)
                         start = intersectIndexes[1];
-                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start, intersects[1],false);
+                        newPoints = AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start, intersects[1]);
 
                         newPoints.Add(intersects[2]);
                         newPoints.Add(vertices[edge[1]]);
@@ -742,8 +791,22 @@ public class Interiors : MonoBehaviour
                     else//starts inside
                     {
                         //to do!
-                        Debug.Log("inside3");
+                        Debug.Log("inside3 - redo");
+                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = intersects[0];
+                        c.name = "intersect 0";
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = intersects[1];
+                        c.name = "intersect 1";
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = intersects[2];
+                        c.name = "intersect 2";
                     }
+                }
+                else if (intersects.Count == 4)
+                {
+                    Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.magenta);
+                    Debug.Log("intersects == 4!");
                 }
             }
 
@@ -753,12 +816,13 @@ public class Interiors : MonoBehaviour
         }
     }
 
-    List<Vector3> AddRingPointsToNextIntersect(List<Vector3> newPoints, List<CellInfo> cellInfos,int currentCellIndex,int currentEdgeIndex, int start, Vector3 currentIntersect,bool addNextRingPoint)
+    List<Vector3> AddRingPointsToNextIntersect(List<Vector3> newPoints, List<CellInfo> cellInfos,int currentCellIndex,int currentEdgeIndex, int start, Vector3 currentIntersect)
     {
         bool doCubes = true; //for debug
         bool found = false;
 
-        List<Vector3> intersects = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex];
+        //List<Vector3> intersects = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex];
+
         for (int a = start, z = 0; z < ringPoints.Count; a++, z++)
         {
             if (found)
@@ -788,13 +852,15 @@ public class Interiors : MonoBehaviour
                             break;
 
                         //and the match isn't this already found intersect
-                        if (cellInfos[currentCellIndex].intersectsForEdges[b][q] != currentIntersect)//intersects[intersects.Count - 1]
+                        //if (!intersects.Contains( cellInfos[currentCellIndex].intersectsForEdges[b][q]))// != currentIntersect)
+                        if (cellInfos[currentCellIndex].intersectsForEdges[b][q] != currentIntersect)
                         {
+                            
                             if (doCubes)
                             {
                                 GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                                 c.transform.position = cellInfos[currentCellIndex].intersectsForEdges[b][q];
-                                c.name = "intersect";
+                                c.name = "intersect " + b.ToString();
                             }
 
                             found = true;

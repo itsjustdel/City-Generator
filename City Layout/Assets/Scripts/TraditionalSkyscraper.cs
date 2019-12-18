@@ -639,7 +639,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
             //make unique points instead of a ring of sequential points - allows triangles their own vertices.
             List<List<Vector3>> uniqueEdgePoints = AddDuplicates(ringEdgePoints);
-            List<List<Vector3>>  uniqueCornerPoints = AddDuplicates(ringCornerPoints);
+            List<List<Vector3>> uniqueCornerPoints = AddDuplicates(ringCornerPoints);
 
             //organise list in to one list travelling round ring
             List<Vector3> ringPointsUnique = RingPoints(uniqueEdgePoints, uniqueCornerPoints);
@@ -700,6 +700,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             Interiors interiors = storey.AddComponent<Interiors>();
             interiors.ringPoints = RingPointsForInterior(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
             interiors.cornerPoints = cornerPoints;
+            interiors.corners = ringCornerPoints.Count;
            
 
             yield break;
