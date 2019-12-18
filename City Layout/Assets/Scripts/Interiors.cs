@@ -6,20 +6,27 @@ public class Interiors : MonoBehaviour
 {
 
     public List<int> isolates = new List<int>();
-        
+
+
+    public List<GameObject> areas = new List<GameObject>();
     public List<Vector3> ringPoints = new List<Vector3>();
     public List<Vector3> cornerPoints = new List<Vector3>();
     public int corners = 0;
 
     public bool snip;
+
+    GameObject interiorObj;
+    int frames = 0;
+
     private void Start()
     {
         //
         CreateVoronoi();
+
         //need to wait for voronoi to finish before snipping
 
-
-        Invoke("Snip", 0.1f);
+        //force update loop to pick up on next render
+        snip = true;
     }
 
     private void Update()
@@ -28,9 +35,15 @@ public class Interiors : MonoBehaviour
         {
 
             //ShowCubesOnRing(gameObject, ringPoints);
+            if (frames > 1)
+            {
 
-            Snip();
-            snip = false;
+
+                Snip();
+                snip = false;
+            }
+
+            frames++;
 
             //now check for line intersections and adjust mesh
         }
@@ -66,7 +79,7 @@ public class Interiors : MonoBehaviour
         
 
 
-        GameObject interiorObj = new GameObject();
+        interiorObj = new GameObject();
         interiorObj.name = "Interior";
         interiorObj.transform.parent = gameObject.transform;
         interiorObj.transform.position = gameObject.transform.position;
@@ -84,6 +97,7 @@ public class Interiors : MonoBehaviour
         underSide.AddComponent<MeshCollider>();
         int cap = (int)((underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z )*0.5f);// 5;
         cap = corners;
+        cap = Random.Range(3, 10);
         //?work needs done for this
         //add random
         RaycastHit hit;
@@ -168,293 +182,9 @@ public class Interiors : MonoBehaviour
 
         CellPoints(interiorCells, cellInfos);
 
-        Debug.Break();
+      
     }
-
-    public void SnipOld()
-    {
-        //**need to sort this!! missing end loop - fixed?
-        //ShowCubesOnRing(gameObject, ringPoints);
-
-        List<GameObject> interiorCells = transform.Find("Interior").GetComponent<MeshGenerator>().cells;
-        // Debug.Log(interiorCells.Count);
-
-        GameObject underSide = transform.Find("UnderSide").gameObject;
-
-
-        //get rid of any cells which are not overlapping
-        List<GameObject> cellsToSnip = new List<GameObject>(interiorCells);
-
-        /*
-        RaycastHit hit;
-        
-        for (int i = 0; i < interiorCells.Count; i++)
-        {
-            //need to make sure an edge isn't on main floor
-            int hits = 0;
-            Vector3[] vertices = interiorCells[i].GetComponent<MeshFilter>().mesh.vertices;
-            for (int j = 1; j < vertices.Length; j++)
-            {
-                Vector3 shootFrom = vertices[j];
-                shootFrom -= Vector3.up;
-
-
-                if (Physics.Raycast(shootFrom, Vector3.up, out hit, 2f, LayerMask.GetMask("Roof")))
-                {
-                    hits++;
-                    
-                }
-                else
-                {
-                    
-                }
-
-                if(hits > 0)
-                {
-                    cellsToSnip.Add(interiorCells[i]);
-                    break;
-                }
-            }
-            if (hits == 0)
-                interiorCells[i].SetActive(false);
-        }
-        */
-
-        //find mesh edges which overlap with outside of building floor       
-        //  ringPoints.Add(ringPoints[0]);
-
-       // List<List<Vector3>> cellList = new List<List<Vector3>>();
-
-        //for each cell edge look for an intersection with floor area
-        //save all intersect info in a list
-        List<CellInfo> cellInfos = new List<CellInfo>();
-        for (int j = 0; j < cellsToSnip.Count; j++)//cellsToSnip.Count
-        {
-            //skip for tests
-            if (!isolates.Contains(j) && isolates.Count>0)
-                continue;
-
-            //disable snipped
-            cellsToSnip[j].SetActive(false);
-            cellsToSnip[j].name = j.ToString();
-
-            Vector3[] vertices = cellsToSnip[j].GetComponent<MeshFilter>().mesh.vertices;
-
-            List<int[]> edges = new List<int[]>();
-            List<List<Vector3>> intersectsForEdges = new List<List<Vector3>>();
-            List<List<int>> intersectIndexesForEdges = new List<List<int>>();
-
-            //for each cell work out how many intersects (with the ring points) each edge has
-            for (int k = 1; k < vertices.Length; k++)
-            {
-                int next = k + 1;
-                if (next >= vertices.Length)
-                    next -= vertices.Length - 1; //was 1
-
-
-
-                Vector2 p0 = new Vector2(vertices[k].x, vertices[k].z);
-                Vector2 p1 = new Vector2(vertices[next].x, vertices[next].z);
-
-
-                // Debug.DrawLine(vertices[k], vertices[next], Color.white);
-
-                /*
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = vertices[k];
-                    c.name = "vertices k";
-
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = vertices[next];
-                    c.name = "vertices next";
-                  */
-
-                List<Vector3> intersects = new List<Vector3>();
-                List<int> intersectIndexes = new List<int>();
-                for (int i = 1; i < ringPoints.Count; i++)//can use last found point instead of 1? **opto
-                {
-
-                    //Debug.DrawLine(ringPoints[i - 1], ringPoints[i], Color.yellow);
-
-                    Vector2 p2 = new Vector2(ringPoints[i - 1].x, ringPoints[i - 1].z);
-                    Vector2 p3 = new Vector2(ringPoints[i].x, ringPoints[i].z);
-
-                    Vector2 intersection = Vector2.zero;
-                    //check for curve vs cell intersection
-
-                    if (LineSegmentsIntersection(p0, p1, p2, p3, out intersection))
-                    {
-                        Vector3 intersectV3 = new Vector3(intersection.x, 0f, intersection.y);
-                        /*
-                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = vertices[k];
-                        c.name = "Cell " + j.ToString() + "vertices k";
-
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = vertices[next];
-                        c.name = "vertices next";
-                        
-                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersectV3;
-                        c.name = "interesect";
-                        */
-                        //keep track of how many times this edge has been intersected
-
-                        intersects.Add(intersectV3);
-                        intersectIndexes.Add(i);
-
-
-                    }
-                }
-
-                if (intersects.Count == 1)
-                {
-                    // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    //  c.transform.position = intersects[0];
-                    //  c.name = "interesect 0";
-
-                    //  Debug.DrawLine(intersects[0], vertices[next], Color.cyan);
-
-
-                }
-                if (intersects.Count == 2)
-                {
-                    //Debug.DrawLine(vertices[k], vertices[next], Color.magenta);
-                    //  Debug.DrawLine(intersects[0], intersects[1], Color.magenta);
-
-                }
-
-
-                int[] edge = new int[2] { k, next };
-                edges.Add(edge);
-
-                intersectsForEdges.Add(intersects);
-                intersectIndexesForEdges.Add(intersectIndexes);
-
-            }
-
-            //save
-            cellInfos.Add(new CellInfo(edges, intersectsForEdges, intersectIndexesForEdges,j));
-
-        }
-        for (int j = 0; j < cellInfos.Count; j++)//same count as cell infos ( parallel lists - needed for vertices)
-        {
-            //skip for tests
-         //   if (!isolates.Contains(j))
-          //      continue;
-
-            List<int[]> edges = cellInfos[j].edges;
-            List<List<Vector3>> intersectsForEdges = cellInfos[j].intersectsForEdges;
-            List<List<int>> intersectIndexesForEdges = cellInfos[j].intersectIndexesForEdges;
-
-            Vector3[] vertices = cellsToSnip[cellInfos[j].cellNumber].GetComponent<MeshFilter>().mesh.vertices;
-
-            List<Vector3> newPoints = new List<Vector3>();
-
-            
-            for (int i = 0; i < edges.Count; i++)
-            {
-
-
-                int[] edge = edges[i];
-                List<Vector3> intersects = intersectsForEdges[i];
-                List<int> intersectIndexes = intersectIndexesForEdges[i];
-
-                if (intersects.Count == 0 || intersects.Count == 1)
-                {
-                    RaycastHit hit;
-                    Vector3 shootFrom = vertices[edge[0]];
-                    shootFrom -= Vector3.up;
-
-                    //find out if we are starting from apoint inside the floor cell or not
-                    if (Physics.Raycast(shootFrom, Vector3.up, out hit, 2f, LayerMask.GetMask("Roof")))
-                    {
-                        if(hit.transform.gameObject != underSide)
-                        {
-                            //Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.red);//don't add
-                        }
-                        //starting inside
-                        else if (intersects.Count == 0)
-                        {
-                           // Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.white);//add
-                            newPoints.Add(vertices[edge[0]]);
-                            newPoints.Add(vertices[edge[1]]);
-                        }
-
-                        else if (intersects.Count == 1)
-                        {
-                            Debug.DrawLine(vertices[edge[0]], intersects[0], Color.cyan);//add to intersection then look for ring points
-
-                            //add intersection
-                            newPoints.Add(intersects[0]);
-
-                            //add edge points to next intersection
-                            List<Vector3> tempPoints = RingPointsToNextIntersect(j, i,intersectIndexes[0], cellInfos);//** not adding all points
-
-                            for (int a = 0; a < tempPoints.Count; a++)
-                            {
-                                newPoints.Add(tempPoints[a]);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        //starting outside
-                       // if (intersects.Count == 0)
-                       //     Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.green);//don't add
-
-                        if (intersects.Count == 1)
-                        {
-                            Debug.DrawLine(vertices[edge[1]], intersects[0], Color.magenta);//add from intersection
-
-                            
-                            newPoints.Add(intersects[0]);
-                            newPoints.Add(vertices[edge[1]]);
-
-                        }
-                    }
-                }
-
-                if (intersects.Count == 2)
-                {
-                 
-                    //still to do, special case correct direction - found points = 0 in addRing method, or, find before that?
-
-                   // newPoints.Add(intersects[0]);
-                   // newPoints.Add(intersects[1]);
-
-                    Debug.DrawLine(intersects[0], intersects[1], Color.red);
-
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = intersects[0];
-                    c.name = "intersect count = 2";
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = intersects[1];
-                    c.name = "intersect count = 2";
-
-                    List<Vector3> tempPoints = RingPointsToNextIntersect(j,i,intersectIndexes[1],cellInfos); //need to figure out if direction needs flipped- one dir = [0], other start at [1]
-
-                    for (int a = 0; a < tempPoints.Count; a++)
-                    {
-                        newPoints.Add(tempPoints[a]);
-                    }
-
-                }
-
-                if(intersects.Count >= 3)
-                {
-                    Debug.Log("OMG, 3 or over intersects - it exists, brute force for test to find");
-                }
-            }
-
-            if(newPoints.Count>0)
-              Cell(newPoints);
-
-        }
-
-        Debug.Break();
-
-    }
+    
 
     List<CellInfo> Intersects(List<GameObject> cellsToSnip)
     {
@@ -583,7 +313,7 @@ public class Interiors : MonoBehaviour
                 List<Vector3> intersects = cellInfos[i].intersectsForEdges[j];
                 List<int> intersectIndexes = cellInfos[i].intersectIndexesForEdges[j];
 
-                Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.white);
+                //Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.white);
 
                 if (doCubes)
                 {
@@ -719,9 +449,10 @@ public class Interiors : MonoBehaviour
                     else
                     {
                         Debug.Log("Rare Inside 2 intersects - debug line yellow - redo voronoi - two tiny rooms from one interior shape cell - not worth figuring out method");
-                            
+    
                         Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.yellow);//add from intersection
-
+                        ClearAndReset();
+                        return;
                         /*
                         //add intersect
                         newPoints.Add(intersects[0]);
@@ -767,12 +498,14 @@ public class Interiors : MonoBehaviour
                         }
 
 
-
-                        for (int k = 0; k < intersects.Count; k++)
+                        if (doCubes)
                         {
-                            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                            c.transform.position = intersects[k];
-                            c.transform.name = k.ToString();
+                            for (int k = 0; k < intersects.Count; k++)
+                            {
+                                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                c.transform.position = intersects[k];
+                                c.transform.name = k.ToString();
+                            }
                         }
 
                         //add first intersect
@@ -792,15 +525,21 @@ public class Interiors : MonoBehaviour
                     {
                         //to do!
                         Debug.Log("inside3 - redo");
-                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersects[0];
-                        c.name = "intersect 0";
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersects[1];
-                        c.name = "intersect 1";
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersects[2];
-                        c.name = "intersect 2";
+                        ClearAndReset();
+                        if (doCubes)
+                        {
+                            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = intersects[0];
+                            c.name = "intersect 0";
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = intersects[1];
+                            c.name = "intersect 1";
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = intersects[2];
+                            c.name = "intersect 2";
+                        }
+
+                        return;
                     }
                 }
                 else if (intersects.Count == 4)
@@ -812,13 +551,39 @@ public class Interiors : MonoBehaviour
 
             //make cell mesh and object
             if (newPoints.Count > 0)
-                Cell(newPoints);
+            {
+               GameObject area = Cell(newPoints);
+                areas.Add(area);
+            }
         }
+    }
+
+    private void ClearAndReset()
+    {
+
+        //clear any areas/rooms we have made
+        for (int a = 0; a < areas.Count; a++)
+        {
+            Destroy(areas[a].GetComponent<MeshFilter>().sharedMesh);
+            Destroy(areas[a]);
+        }
+        areas.Clear();
+
+        //and run again
+        Debug.Log("Restarting interior");
+        //Start();
+        Interiors interiors = gameObject.AddComponent<Interiors>();
+        interiors.ringPoints = ringPoints;
+        interiors.cornerPoints = cornerPoints;
+        interiors.corners = corners;
+
+        Destroy(interiorObj);
+
     }
 
     List<Vector3> AddRingPointsToNextIntersect(List<Vector3> newPoints, List<CellInfo> cellInfos,int currentCellIndex,int currentEdgeIndex, int start, Vector3 currentIntersect)
     {
-        bool doCubes = true; //for debug
+        bool doCubes = false;//debug
         bool found = false;
 
         //List<Vector3> intersects = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex];
@@ -890,337 +655,20 @@ public class Interiors : MonoBehaviour
         return newPoints;
     }
 
-    List<Vector3> RingPointsToNextIntersectForTwo(int currentCellIndex, int currentEdgeIndex, int start, List<CellInfo> cellInfos)
-    {
-        //look for intersects
-
-        List<Vector3> tempPoints = new List<Vector3>();
-
-        List<List<int>> intersectIndexesForEdges = cellInfos[currentCellIndex].intersectIndexesForEdges;
-        List<List<Vector3>> intersectsForEdges = cellInfos[currentCellIndex].intersectsForEdges;
-
-        //add the intersect where we are working from before adding ring points (mental count-1)
-        //tempPoints.Add(cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex].Count-1]);
-        //find next point
-        int totalFound = 0;
-
-
-        /*
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = ringPoints[thisRingIndex];
-                    c.transform.name = "ring point A " + thisRingIndex;
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = ringPoints[nextRingIndex];
-                    c.transform.name = "ring point B " + nextRingIndex;
-
-                    //look for any other intersect(s)
-                    List<Vector3> foundPoints = new List<Vector3>();
-                    */
-
-        for (int a = 0; a < ringPoints.Count; a++)
-        {
-
-            //do -1 to check the edge we are on first 
-            int thisRingIndex = a + start - 1;
-
-            if (thisRingIndex > ringPoints.Count - 1)
-                thisRingIndex -= ringPoints.Count;
-
-
-
-            if (thisRingIndex < 0)
-                thisRingIndex += ringPoints.Count;
-
-            int nextRingIndex = thisRingIndex + 1;
-            if (nextRingIndex > ringPoints.Count - 1)
-                nextRingIndex -= ringPoints.Count;
-           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-           //  c.transform.position = ringPoints[thisRingIndex];
-           //   c.transform.name = "ring point A " + thisRingIndex;
-
-            for (int i = 0; i < intersectIndexesForEdges.Count; i++)
-            {
-
-                if (i != currentEdgeIndex)
-                    continue;
-
-                List<int> intersectIndexes = intersectIndexesForEdges[i];
-                List<Vector3> intersects = intersectsForEdges[i];
-
-                
-                for (int j = 0; j < intersectIndexes.Count; j++)
-                {
-                
-                 
-
-                    if (totalFound % 2 != 0)
-                    {
-                       // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                       // c.transform.position = ringPoints[thisRingIndex];
-                      //  c.transform.name = "ring point A " + thisRingIndex;
-                    }
-
-                    if (thisRingIndex == intersectIndexes[j])
-                    {
-                        // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        //c.transform.position = ringPoints[intersectIndexes[j]];
-                        //c.transform.name = " intersect index 0 " + nextRingIndex;
-
-                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersects[j];
-                        c.transform.name = " intersect v3 ";
-
-                        
-                    }
-
-
-                }
-
-
-            }
-
-        }
-
-        //if we never found any other intersections, it means the only edge is this one joined by a curve
-        if (totalFound == 0)
-        {
-            Debug.Log("i = " + currentEdgeIndex + ", total found = " + totalFound);
-            //send to its own special function to work out which way the points should run round the edge points
-            //tempPoints = EndSection(currentCellIndex,currentEdgeIndex,cellInfos, false);
-        }
-
-        return tempPoints;
-    }
-
-
-    List<Vector3> RingPointsToNextIntersect(int currentCellIndex, int currentEdgeIndex, int start, List<CellInfo> cellInfos)
-    {
-        //look for intersects
-
-        List<Vector3> tempPoints = new List<Vector3>();
-
-        List<List<int>> intersectIndexesForEdges = cellInfos[currentCellIndex].intersectIndexesForEdges;
-        List<List<Vector3>> intersectsForEdges = cellInfos[currentCellIndex].intersectsForEdges;
-
-        //add the intersect where we are working from before adding ring points (mental count-1)
-        //tempPoints.Add(cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex].Count-1]);
-        //find next point
-        int totalFound = 0;
-        for (int a = 0; a < ringPoints.Count; a++)
-        {
-            //do -1 to check the edge we are on first 
-            int thisRingIndex = a + start -1;
-          
-            if (thisRingIndex > ringPoints.Count - 1)
-                thisRingIndex -= ringPoints.Count;
-
-            
-
-            if (thisRingIndex < 0)
-                thisRingIndex += ringPoints.Count;
-
-            int nextRingIndex = thisRingIndex + 1;
-            if (nextRingIndex > ringPoints.Count - 1)
-                nextRingIndex -= ringPoints.Count;
-
-            
-           
-           //  c =GameObject.CreatePrimitive(PrimitiveType.Cube);
-           // c.transform.position = ringPoints[nextRingIndex];
-          //  c.transform.name = "ring point B " + nextRingIndex;
-            
-            //look for any other intersect(s)
-            List<Vector3> foundPoints = new List<Vector3>();
-            for (int z = 0; z < intersectIndexesForEdges.Count; z++)
-            {
-               // if (z == currentEdgeIndex)//looking for other edges
-                //    continue;
-
-                List<int> intersectIndexes = intersectIndexesForEdges[z];
-                List<Vector3> intersects = intersectsForEdges[z];
-
-                for (int w = 0; w < intersectIndexes.Count; w++)
-                {
-                    if (nextRingIndex == intersectIndexes[w] )
-                    {
-                        GameObject  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = intersects[w];
-                        c.transform.name = "Found - ringpoints to next intersect " + foundPoints.Count.ToString();
-
-                        //if (!foundPoints.Contains(intersectsForEdges[z][w]))
-                        {
-                            tempPoints.Add(intersects[w]);
-                            totalFound++;
-                        }
-                    }
-                }
-            }
-
-            if (totalFound % 2 == 0)
-            {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[nextRingIndex];
-                c.transform.name = "ring point A " + nextRingIndex + ", total found = " + totalFound;
-                tempPoints.Add(ringPoints[nextRingIndex]);
-            }
-            /*
-            if (foundPoints.Count > 0)
-            {
-                
-                //add the last found point in the list
-                tempPoints.Add(foundPoints[foundPoints.Count - 1]);
-                break;
-            }
-            else
-            {
-                Debug.DrawLine(ringPoints[thisRingIndex], ringPoints[nextRingIndex], Color.yellow);
-                tempPoints.Add(ringPoints[nextRingIndex]);
-
-                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[nextRingIndex];
-                c.transform.name = "ring point - 1 intersect";
-            }
-            */
-        }
-
-        //if we never found any other intersections, it means the only edge is this one joined by a curve
-        if (totalFound == 0)
-        {
-            Debug.Log("i = " + currentEdgeIndex + ", total found = " + totalFound);
-            //send to its own special function to work out which way the points should run round the edge points
-           // tempPoints = EndSection(currentCellIndex,currentEdgeIndex,cellInfos, false);
-        }
-
-        return tempPoints;
-    }
-
-    public List<Vector3> EndSection(int currentCellIndex, int currentEdgeIndex, List<CellInfo> cellInfos, bool flipDirection)
-    {
-        //look for edges
-
-        List<Vector3> tempPoints = new List<Vector3>();
-
-        //Aim of the game is to find which direction to run round the edge points so that we don't create a new cell over already planned/craeted cells
-        //We are looking for duplicates
-        
-        Vector3 startPos = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][0];
-        Vector3 endPos = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][1];
-
-        int start = cellInfos[currentCellIndex].intersectIndexesForEdges[currentEdgeIndex][0];
-        int end = cellInfos[currentCellIndex].intersectIndexesForEdges[currentEdgeIndex][1];
-
-        if (flipDirection)
-        {
-            start = cellInfos[currentCellIndex].intersectIndexesForEdges[currentEdgeIndex][1];
-            end = cellInfos[currentCellIndex].intersectIndexesForEdges[currentEdgeIndex][0];
-
-            startPos = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][1];
-            endPos = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][0];
-        }
-
-        tempPoints.Add(startPos);
-
-        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        c.transform.position = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][0];
-        c.transform.name = "End Section - Start " + "Flipped = " + flipDirection;
-
-        //int found = 0;
-        List<Vector3> found = new List<Vector3>();
-        //check to see how many intersects we run over when we travel round the ring points
-        for (int a = 0; a < ringPoints.Count; a++)
-        {
-            
-            int thisRingIndex = a + start;
-
-            if (thisRingIndex > ringPoints.Count - 1)
-                thisRingIndex -= ringPoints.Count;
-
-            if (thisRingIndex < 0)
-                thisRingIndex += ringPoints.Count;
-
-            int nextRingIndex = thisRingIndex + 1;
-            if (nextRingIndex > ringPoints.Count - 1)
-                nextRingIndex -= ringPoints.Count;
-
-            //look for other intersect
-            if(thisRingIndex == end)
-            {
-                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][1];
-                if(flipDirection)
-                    c.transform.position = cellInfos[currentCellIndex].intersectsForEdges[currentEdgeIndex][0];
-
-                c.transform.name = "End Section - End " + "Flipped = " + flipDirection;// + foundPoints.Count.ToString();
-
-                tempPoints.Add(endPos);
-                break;
-            }
-
-            for (int z = 0; z < cellInfos.Count; z++)
-            {
-                if (z == currentCellIndex)
-                    continue;
-
-                List<List<int>> intersectIndexesForCell = cellInfos[z].intersectIndexesForEdges;
-                List<List<Vector3>> intersectsForCell = cellInfos[z].intersectsForEdges;
-
-                for (int x = 0; x < intersectIndexesForCell.Count; x++)
-                {
-
-                    List<int> intersectIndexes = intersectIndexesForCell[x];
-                    List<Vector3> intersects = intersectsForCell[x];
-                    
-
-                    for (int q = 0; q < intersectIndexes.Count; q++)
-                    {
-                        
-                        if (intersectIndexes[q] == thisRingIndex)
-                        {
-                            
-                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                            c.transform.position = ringPoints[intersectIndexes[q]];
-                            c.transform.name = "Found - Endpoints " +", ring = " + thisRingIndex.ToString() + ", cell = " + z + ", intersect index for cell = " + x + " ,intersect index = " + q ;// + foundPoints.Count.ToString();
-
-                            if(!found.Contains(ringPoints[intersectIndexes[q]]))
-                                found.Add(ringPoints[intersectIndexes[q]]);
-                            //found++;
-                            
-                        }
-                    }
-                }
-            }
-
-            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = ringPoints[thisRingIndex];
-            c.transform.name = "ring point";
-
-            tempPoints.Add(ringPoints[thisRingIndex]);
-        }
-
-       // tempPoints.Add(endPos);
-
-        if (found.Count > 1 && !flipDirection)
-        {
-            Debug.Log("Flip");
-            //too many - reverse direction and try again
-            tempPoints = EndSection(currentCellIndex, currentEdgeIndex,cellInfos, true);
-        }
-    
-
-
-        return tempPoints;
-    }
-
     public GameObject Cell(List<Vector3> newPoints)
     {
         
         Vector3 avg = Vector3.zero;
+        bool doCubes = false;
+         
         for (int a = 0; a < newPoints.Count; a++)
         {
-             GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-             c.transform.position = newPoints[a];
-             c.name = "np";
-
+            if (doCubes)
+            {
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = newPoints[a];
+                c.name = "np";
+            }
             avg += newPoints[a];
         }
 
