@@ -283,7 +283,8 @@ public class MeshGenerator : MonoBehaviour {
 
             CalculateAdjacents();
 
-            RemoveSmallEdges();//testing early in pipeline
+            RemoveSmallEdges();
+
             ReMesh(true);
 
             SplitCells();
@@ -304,8 +305,21 @@ public class MeshGenerator : MonoBehaviour {
             //add ...
             AddToCells();
         }
-        else
+        else//interiro
         {
+            /*
+            Edges();
+            CalculateAdjacents();
+
+            RemoveSmallEdges();
+
+            ReMesh(true);
+
+            //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
+            Edges();
+
+            CalculateAdjacents();
+            */
             //interiors - each floor
             for (int i = 0; i < cells.Count; i++)
             {
@@ -384,13 +398,20 @@ public class MeshGenerator : MonoBehaviour {
 
     void ReMesh(bool enableRenderer)
     {        
-        for (int i = 0; i < cells.Count; i++)
+        if(interior)
+        {
+            Debug.Log("before = " + cells.Count);
+        }
+
+        for (int i = cells.Count-1; i >= 0; i--)// can be removing
         {
 
             if (enableRenderer)
                 cells[i].GetComponent<MeshRenderer>().enabled = true;
 
             Vector3[] vertices = cells[i].GetComponent<MeshFilter>().mesh.vertices;
+
+
 
 
             List<Vector3> newVertices = new List<Vector3>();
@@ -420,6 +441,14 @@ public class MeshGenerator : MonoBehaviour {
                     if (Vector3.Distance(vertices[j], newVertices[1]) > tolerance)//can loop, so catch if it tries to weld last to first (instead !=. doing distance)
                         newVertices.Add(vertices[j]);
                 }
+            }
+
+            //check we can still make a mesh
+            if(newVertices.Count <=2)
+            {
+             //   Destroy(cells[i]);
+             //   cells.RemoveAt(i);
+             //   continue;
             }
 
             //create new mesh
@@ -463,12 +492,20 @@ public class MeshGenerator : MonoBehaviour {
             }
         }
 
-    }
 
+        if (interior)
+        {
+            Debug.Log("after = " + cells.Count);
+            
+        }
+    }
 
     void RemoveSmallEdges()
     {
-
+        for (int a = 0; a < cells.Count; a++)
+        {
+          //  Debug.Log("before cell " + a.ToString() +", edge count = " + cells[a].GetComponent<AdjacentCells>().edges.Count);
+        }
         //now we need to look for small edges
         for (int a = 0; a < cells.Count; a++)
         {
@@ -483,7 +520,7 @@ public class MeshGenerator : MonoBehaviour {
                 if (distance < minEdgeSize)
                 {
 
-                    /*
+                    
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                      c.transform.position = p0;
                      c.name = a.ToString() + " " + i.ToString() + " 0 first";
@@ -491,7 +528,7 @@ public class MeshGenerator : MonoBehaviour {
                      c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                      c.transform.position = p1;
                      c.name = a.ToString() + " " + i.ToString() + " 1 ";
-                     */
+                     c.transform.parent = cells[a].transform;
                     //find all other vertices which equal this
 
                     //add this
@@ -628,6 +665,12 @@ public class MeshGenerator : MonoBehaviour {
         ReMesh(true);
         //and work out edges for each cell again now we have changed them
         Edges();
+
+        for (int a = 0; a < cells.Count; a++)
+        {
+           // Debug.Log("after cell " + a.ToString() + cells[a].GetComponent<AdjacentCells>().edges.Count);
+        }
+        
     }
 
 

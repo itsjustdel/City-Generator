@@ -695,6 +695,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 }
             }
 
+
             //interiors
             //drop some mesh data to help later when planning interior
             Interiors interiors = storey.AddComponent<Interiors>();

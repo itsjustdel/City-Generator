@@ -206,7 +206,7 @@ public class AdjacentCells : MonoBehaviour {
             Vector3 p0 = verts[prevInt];
             Vector3 p1 = verts[thisInt];
             Vector3 p2 = verts[nextInt];
-            Vector3 p3 = verts[nextNextInt];
+            Vector3 p3 = verts[nextNextInt];//shouldn't get to here, need to remove cell if edges get removed
 
             //so order around cell is previous,p0,p1,next
             Vector3 miterDirection0 = MiterDirection(p0, p1, p2,miterSize);
