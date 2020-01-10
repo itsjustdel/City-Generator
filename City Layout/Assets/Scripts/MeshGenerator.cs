@@ -287,39 +287,42 @@ public class MeshGenerator : MonoBehaviour {
 
             ReMesh(true);
 
-            SplitCells();
+            //SplitCells();//////////removing atm
 
             //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
             Edges();
             CalculateAdjacents();
             //prob not necessary ^^
 
-            if (cells.Count > 6)
-                MergeCells();
+           // if (cells.Count > 6)////////////removing atm
+           //     MergeCells();
 
 
             //choose colours for each cell
             SetPalletes();
-
 
             //add ...
             AddToCells();
         }
         else//interiro
         {
-            /*
+            
             Edges();
+
+            
             CalculateAdjacents();
-
+            
             RemoveSmallEdges();
-
-            ReMesh(true);
+            
+           
 
             //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
             Edges();
 
             CalculateAdjacents();
-            */
+            /*
+             * 
+             * 
             //interiors - each floor
             for (int i = 0; i < cells.Count; i++)
             {
@@ -327,7 +330,7 @@ public class MeshGenerator : MonoBehaviour {
                 
             }
 
-            
+            */
         }
      //   yield break;
     }
@@ -397,14 +400,16 @@ public class MeshGenerator : MonoBehaviour {
     }
 
     void ReMesh(bool enableRenderer)
-    {        
-        if(interior)
-        {
-            Debug.Log("before = " + cells.Count);
-        }
+    {  
 
         for (int i = cells.Count-1; i >= 0; i--)// can be removing
         {
+
+
+            if (interior)
+            {
+              //  Debug.Log("before = " + cells[i].GetComponent<MeshFilter>().mesh.vertexCount);
+            }
 
             if (enableRenderer)
                 cells[i].GetComponent<MeshRenderer>().enabled = true;
@@ -490,21 +495,22 @@ public class MeshGenerator : MonoBehaviour {
                 // Debug.Log("mesh count before update");
              
             }
+
+            if (interior)
+            {
+             //   Debug.Log("after = " + cells[i].GetComponent<MeshFilter>().mesh.vertexCount);
+            }
         }
 
 
-        if (interior)
-        {
-            Debug.Log("after = " + cells.Count);
-            
-        }
+       
     }
 
     void RemoveSmallEdges()
     {
         for (int a = 0; a < cells.Count; a++)
         {
-          //  Debug.Log("before cell " + a.ToString() +", edge count = " + cells[a].GetComponent<AdjacentCells>().edges.Count);
+           // Debug.Log("before cell " + a.ToString() +", edge count = " + cells[a].GetComponent<AdjacentCells>().edges.Count);
         }
         //now we need to look for small edges
         for (int a = 0; a < cells.Count; a++)
@@ -520,17 +526,18 @@ public class MeshGenerator : MonoBehaviour {
                 if (distance < minEdgeSize)
                 {
 
-                    
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                     c.transform.position = p0;
-                     c.name = a.ToString() + " " + i.ToString() + " 0 first";
-                     c.transform.parent = cells[a].transform;
-                     c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                     c.transform.position = p1;
-                     c.name = a.ToString() + " " + i.ToString() + " 1 ";
-                     c.transform.parent = cells[a].transform;
-                    //find all other vertices which equal this
-
+                    if (interior)
+                    {
+                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = p0;
+                        c.name = a.ToString() + " " + i.ToString() + " 0 first";
+                        c.transform.parent = cells[a].transform;
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = p1;
+                        c.name = a.ToString() + " " + i.ToString() + " 1 ";
+                        c.transform.parent = cells[a].transform;
+                        //find all other vertices which equal this
+                    }
                     //add this
                     List<List<int>> toMove = new List<List<int>>();
                     toMove.Add(new List<int>() { a, i });
@@ -668,7 +675,7 @@ public class MeshGenerator : MonoBehaviour {
 
         for (int a = 0; a < cells.Count; a++)
         {
-           // Debug.Log("after cell " + a.ToString() + cells[a].GetComponent<AdjacentCells>().edges.Count);
+          //  Debug.Log("after cell " + a.ToString() + cells[a].GetComponent<AdjacentCells>().edges.Count);
         }
         
     }

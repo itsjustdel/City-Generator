@@ -702,17 +702,9 @@ public class TraditionalSkyscraper : MonoBehaviour {
             interiors.ringPoints = RingPointsForInterior(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
             interiors.cornerPoints = cornerPoints;
             interiors.corners = ringCornerPoints.Count;
-           
+            //interiors.enabled = false;
 
             yield break;
-
-
-
-            //else if (animateBuild)     
-            yield return new WaitForEndOfFrame();
-            
-             
-
         }
 
         //hooray!
@@ -1161,17 +1153,17 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         for (int i = 0; i < ringEdgePoints.Count; i++)
         {
-            for (int j = ringEdgePoints[i].Count -1; j < ringEdgePoints[i].Count; j++)//only add last
-            {
-                finalRingVertices.Add(ringEdgePoints[i][j]);
-
-            }
-
+            //only add first and last
+            finalRingVertices.Add(ringEdgePoints[i][0]);
+            finalRingVertices.Add(ringEdgePoints[i][ringEdgePoints[i].Count-1]);
+            
             for (int j = 0; j < ringCornerPoints[i].Count; j++)
             {
                 finalRingVertices.Add(ringCornerPoints[i][j]);
             }
         }
+
+        finalRingVertices= finalRingVertices.Distinct().ToList();
 
         //make final loop point
         finalRingVertices.Add(finalRingVertices[0]);

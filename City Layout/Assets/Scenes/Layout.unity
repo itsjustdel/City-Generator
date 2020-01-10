@@ -1625,7 +1625,7 @@ MonoBehaviour:
   simultaneously: 1
   buildingSpeed: 5
   citySize: 100
-  density: 4
+  density: 5
 --- !u!1 &1792139506
 GameObject:
   m_ObjectHideFlags: 0
