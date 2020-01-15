@@ -6,11 +6,13 @@ public class Interiors : MonoBehaviour
 {
 
     public List<int> isolates = new List<int>();
-
+    public bool doHalls = true;
 
     public List<GameObject> areas = new List<GameObject>();
     public List<Vector3> ringPoints = new List<Vector3>();
+    public List<Vector3> targetPoints = new List<Vector3>();//where door will try and attach to
     public List<Vector3> cornerPoints = new List<Vector3>();
+    //public GameObject underSide;
 
     
     public int corners = 0;
@@ -18,9 +20,13 @@ public class Interiors : MonoBehaviour
     public float hallWidth = 2f;
 
     public bool snip;
-    public bool fullReset; 
+    public bool fullReset;
+    public bool showRingPoints = false;
     GameObject interiorObj;
     int frames = 0;
+
+    //used by children components to build halls
+    public Vector3 doorEdgePos = Vector3.zero;
 
     private void Start()
     {
@@ -37,8 +43,9 @@ public class Interiors : MonoBehaviour
     {
         if(snip)
         {
+            if(showRingPoints)
+                ShowCubesOnRing(gameObject, ringPoints);
 
-           // ShowCubesOnRing(gameObject, ringPoints);
             if (frames > 1)
             {
 
@@ -73,19 +80,6 @@ public class Interiors : MonoBehaviour
     public void CreateVoronoi()
     {
 
-        List<Vector3> ringPoints = cornerPoints;
-        //add halfway to ringpoints
-        List<Vector3> ringPointsHalfway = new List<Vector3>();
-        ringPointsHalfway.Add(ringPoints[0]);
-        for (int i = 1; i < ringPoints.Count; i++)
-        {
-            ringPointsHalfway.Add(Vector3.Lerp(ringPoints[i - 1], ringPoints[i], 0.5f));
-
-            ringPointsHalfway.Add(ringPoints[i]);
-        }
-        ringPointsHalfway.Add(Vector3.Lerp(ringPoints[0], ringPoints[ringPoints.Count-1], 0.5f));
-
-        ringPoints = new List<Vector3>(ringPointsHalfway);
         
 
 
@@ -100,102 +94,101 @@ public class Interiors : MonoBehaviour
         
         //find random positions within floor
 
-        Vector3 shootFrom = gameObject.transform.position - 10f * Vector3.up;
+       // Vector3 shootFrom = gameObject.transform.position - 10f * Vector3.up;
         //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
         //c.transform.position = shootFrom;
-        GameObject underSide = gameObject.transform.Find("UnderSide").gameObject;
-        underSide.AddComponent<MeshCollider>();
-        int cap = (int)((underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z )*0.5f);// 5;
-        cap = corners/2 +1;
+        //GameObject underSide = gameObject.transform.Find("UnderSide").gameObject;//asigned when adding Interiors
+       // if(GetComponent<MeshCollider>() == null)
+        //    gameObject.AddComponent<MeshCollider>();
+
+        //int cap = (int)((underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z )*0.5f);// 5;
+        int cap = corners/2 +1;
         //cap = Random.Range(3, 10);
         //?work needs done for this
         //add random
-        RaycastHit hit;
-        float limit = (underSide.GetComponent<MeshRenderer>().bounds.extents.x + underSide.GetComponent<MeshRenderer>().bounds.extents.z)*.5f;
-        int a = 0;
-        for (int i = 0; i < cap; i++)
+       // RaycastHit hit;
+        float limit = (GetComponent<MeshRenderer>().bounds.extents.x + GetComponent<MeshRenderer>().bounds.extents.z)*.5f;
+        
+
+        
+        //find random points inside triangles of "underside" floorplan
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        int[] triangles = GetComponent<MeshFilter>().mesh.triangles;
+        Vector3 zeroGameObj = new Vector3(gameObject.transform.position.x, 0f, gameObject.transform.position.z);
+        int count = 0;
+
+       // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+      //  c.transform.position = zeroGameObj;
+      //  c.name = "zero g";
+
+        for (int a = 0; a < 100; a++)
         {
-            a++;
-            if(a>100)
-            {
-                Debug.Log("SAFETY, yard points = " + mg.yardPoints.Count);
-
-                //too small for rooms, just add main flor for full room and return - to do
-                mg.enabled = false;//don't do just now- will need to make a method for this - make two small rooms from middle point?
-                
-                return;
-            }
-            Vector2 modV2 = Random.insideUnitCircle;
-            Vector3 modV3 = new Vector3(modV2.x, 0f, modV2.y);
-            //create a float with average size of bounds
-            modV3 *= limit;
+            //create a point with random angle from centre with a random distance(capped at bounds distance)
+            Vector3 randomV3 = transform.position + (Quaternion.Euler(0, Random.Range(0, 360), 0) * Vector3.right);// * Random.Range(0f, limit);//removinf range so all point are around middle
            // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-           // c.transform.position = shootFrom + modV3;
-           // c.name = "shootfrom";
-            bool add = false;
-            Vector3 toAdd = Vector3.zero;
-            if (Physics.Raycast(shootFrom + modV3, Vector3.up, out hit, 20f, LayerMask.GetMask("Roof")))
+           // c.transform.position = randomV3;
+          //  c.name = "outside";
+            for (int j = 0; j < triangles.Length; j+=3)
             {
-                if (hit.transform == underSide.transform)
+                Vector3 t0 = vertices[triangles[j]] + transform.position;//0 y will happen in v2 conversion
+                Vector3 t1 = vertices[triangles[j+1]] + transform.position;
+                Vector3 t2 = vertices[triangles[j+2]] + transform.position;
+
+                Vector3 q = new Vector3(randomV3.x, randomV3.z);
+                Vector3 q0 = new Vector2(t0.x, t0.z);
+                Vector3 q1 = new Vector2(t1.x, t1.z);
+                Vector3 q2 = new Vector2(t2.x, t2.z);
+
+                if(PointInTriangle(q,q0,q1,q2))
                 {
-                   // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                   // c.transform.position = hit.point;
-                   // c.name = "shootfrom hit " + i.ToString(); ;
+                   // c.name = "Inside";
+                    //zero they before adding
+                    randomV3 = new Vector3(randomV3.x, 0f, randomV3.z);
 
-                    //can be optimised by using triangles https://gis.stackexchange.com/questions/6412/generate-points-that-lie-inside-polygon  //**OPTO
-                    bool allHit = true;
-                    for (int j = 0; j < 360; j += 360 / 6)
+                  //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = randomV3 - zeroGameObj;
+                 //   c.name = "tard point from tri";
+
+                    mg.yardPoints.Add(randomV3 - zeroGameObj);
+
+                    count++;
+
+                    if (count == cap)
                     {
-                        Vector3 arm = Quaternion.Euler(0, j, 0) * Vector3.right;
-                        Vector3 armShootFrom = shootFrom + modV3 + (arm * hallWidth * 2);
-
-                        if (!Physics.Raycast(armShootFrom, Vector3.up, out hit, 20f, LayerMask.GetMask("Roof")))
-                        {
-                            //if it doesnt hit this object
-
-                           // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                           // c.transform.position = armShootFrom;
-                           // c.name = "MISS " + i.ToString(); ;
-                            allHit = false;
-
-                            break;
-                        }
-                        else
-                        {
-                           // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                           // c.transform.position = armShootFrom;
-                           // c.name = "Hit " + j.ToString(); ;
-                        }
-
+                        //break from both loops
+                        a = 100;
+                        break;
                     }
 
-                    if (allHit)
-                    {
-                        add = true;
-
-                        //points can't be too near a ring point - breaks interesect code
-                        Vector3 zeroYHitPoint = shootFrom + modV3;
-                        toAdd = new Vector3(zeroYHitPoint.x, 0f, zeroYHitPoint.z);
-                    }
                 }
             }
 
-            if(add)
+            if(a == 99)
             {
-                //c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-               // c.transform.position = toAdd;
-               // c.name = "ADD " + i.ToString(); ;
-
-                mg.yardPoints.Add(toAdd - transform.position);
+                Debug.Log("No points inside floorplan for interior - hit safety");
             }
-            else
-                i--;
         }
+        
 
         //add border points
+
+        List<Vector3> ringPoints = cornerPoints;
+        //add halfway to ringpoints
+        List<Vector3> ringPointsHalfway = new List<Vector3>();
+        ringPointsHalfway.Add(ringPoints[0]);
+        for (int i = 1; i < ringPoints.Count; i++)
+        {
+            ringPointsHalfway.Add(Vector3.Lerp(ringPoints[i - 1], ringPoints[i], 0.5f));
+
+            ringPointsHalfway.Add(ringPoints[i]);
+        }
+        ringPointsHalfway.Add(Vector3.Lerp(ringPoints[0], ringPoints[ringPoints.Count - 1], 0.5f));
+
+        ringPoints = new List<Vector3>(ringPointsHalfway);
         for (int i = 0; i < ringPoints.Count; i++)
         {
-            Vector3 zeroGameObj = new Vector3(gameObject.transform.position.x, 0f, gameObject.transform.position.z);
+            //0 that y co-ord
+            ringPoints[i] = new Vector3(ringPoints[i].x,0f,ringPoints[i].z);
             Vector3 p = ringPoints[i] -zeroGameObj;
 
             p.y = 0f;
@@ -206,12 +199,14 @@ public class Interiors : MonoBehaviour
 
            // mg.yardPoints.Add(p);
            // mg.yardPoints.Add(p + dir);
-            mg.yardPoints.Add(p + dir*5f);//how big?
-            mg.yardPoints.Add(p + dir * 10f);
+            mg.yardPoints.Add(p + dir* limit);//how big?
+            mg.yardPoints.Add(p + dir *limit*2);
             //mg.yardPoints.Add(p - dir * 0.1f);
             // mg.yardPoints.Add(p - dir * 0.2f);
 
             //*** try and fit edge of voronoi pattern to edge of floor
+
+
         }
 
 
@@ -226,8 +221,8 @@ public class Interiors : MonoBehaviour
 
         for (int i = 0; i < mg.yardPoints.Count; i++)
         {
-          //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-         //   c.transform.position = mg.yardPoints[i] + interiorObj.transform.position;
+         //   c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+         //   c.transform.position = mg.yardPoints[i];// + interiorObj.transform.position;
          //   c.transform.localScale *= 0.5f;
             //Destroy(c, 3);
         }
@@ -288,7 +283,7 @@ public class Interiors : MonoBehaviour
                 Vector2 p1 = new Vector2(vertices[next].x, vertices[next].z);
 
 
-               // Debug.DrawLine(vertices[k], vertices[next], Color.white);
+                Debug.DrawLine(vertices[k], vertices[next], Color.white);
 
                 /*
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -364,11 +359,12 @@ public class Interiors : MonoBehaviour
     {
         bool doCubes = false;//debug
 
-        GameObject underSide = gameObject.transform.Find("UnderSide").gameObject;
+        //GameObject underSide = gameObject.transform.Find("UnderSide").gameObject;
         bool makeDoor = true;
-        List<Vector3[]> edgesForHallway = new List<Vector3[]>();
+        //List<Vector3[]> edgesForHallway = new List<Vector3[]>();//?
 
-        Vector3 doorEdgePos = Vector3.zero;
+        bool doorPosFound = false;
+        
         bool doorEdgeFound0 = false;
         bool doorEdgeFound1 = false;
         for (int i = 0; i < cellInfos.Count; i++)
@@ -401,30 +397,57 @@ public class Interiors : MonoBehaviour
                 }
 
 
-                RaycastHit hit;
-                Vector3 shootFrom = vertices[edge[0]];
-                shootFrom -= Vector3.up;
+               // RaycastHit hit;
+               // Vector3 shootFrom = vertices[edge[0]];
+               // shootFrom -= Vector3.up;
 
-                //find out if we are starting from apoint inside the floor cell or not
+                //find out if we are starting from a point inside the floor cell or not
                 bool inside = false;
+                Vector3[] underSideVertices = gameObject.GetComponent<MeshFilter>().mesh.vertices;
+                int[] underSideTriangles= gameObject.GetComponent<MeshFilter>().mesh.triangles;
+                for (int t = 0; t < underSideTriangles.Length; t += 3)
+                {
+                    Vector3 t0 = underSideVertices[underSideTriangles[t]] + transform.position;
+                    Vector3 t1 = underSideVertices[underSideTriangles[t + 1]] + transform.position;
+                    Vector3 t2 = underSideVertices[underSideTriangles[t + 2]] + transform.position;
+                    /*
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = t0;
+                    c.name = "t0";
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = t1;
+                    c.name = "t1";
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = t2;
+                    c.name = "t2";
+                    */
+                    Vector2 q = new Vector3(vertices[edge[0]].x, vertices[edge[0]].z); //possible y co-prd probs on higher floors? but vector 2?
+                    Vector2 q0 = new Vector2(t0.x, t0.z);
+                    Vector2 q1 = new Vector2(t1.x, t1.z);
+                    Vector2 q2 = new Vector2(t2.x, t2.z);
+
+                    if (PointInTriangle(q, q0, q1, q2))
+                    {
+                        inside = true;
+                        break;
+                    }
+                }
+
+                /* //using above inside tri method
                 if (Physics.Raycast(shootFrom, Vector3.up, out hit, 2f, LayerMask.GetMask("Roof")))
                 {
                     if (hit.transform.gameObject == underSide)
                     {
-                        inside = true;
+                        //inside = true;
                     }
                 }
-
+                */
 
                 //organise these ifs better
 
                 if (intersects.Count == 0 || intersects.Count == 1)
                 {
-                    if(inside)
-                    {
-                        Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.red);//don't add
-                    }
-
+                   
                     if (inside)
                     {
                         //starting inside
@@ -432,6 +455,7 @@ public class Interiors : MonoBehaviour
                         {
                             //had one case where intersect was marginal and was adding edge even though it was outside? expensive edge case check
                             bool insideSecond = false;
+                            /*
                             shootFrom = vertices[edge[1]];
                             shootFrom -= Vector3.up;
                             if (Physics.Raycast(shootFrom, Vector3.up, out hit, 2f, LayerMask.GetMask("Roof")))////*** if ditance check for voronoi placement, remove this
@@ -441,18 +465,51 @@ public class Interiors : MonoBehaviour
                                     insideSecond = true;
                                 }
                             }
+                            */
+
+                            for (int t = 0; t < underSideTriangles.Length; t += 3)
+                            {
+                                Vector3 t0 = underSideVertices[underSideTriangles[t]] + transform.position;
+                                Vector3 t1 = underSideVertices[underSideTriangles[t + 1]] + transform.position;
+                                Vector3 t2 = underSideVertices[underSideTriangles[t + 2]] + transform.position;
+                              
+                                Vector3 q = new Vector3(vertices[edge[1]].x, vertices[edge[1]].z); //possible y co-prd probs on higher floors
+                                Vector3 q0 = new Vector2(t0.x, t0.z);
+                                Vector3 q1 = new Vector2(t1.x, t1.z);
+                                Vector3 q2 = new Vector2(t2.x, t2.z);
+
+                                if (PointInTriangle(q, q0, q1, q2))
+                                {
+                                    insideSecond = true;
+                                    break;
+                                }
+                            }
+
+
                             if (insideSecond)
                             {
                                 Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.blue);//add
                                 newPoints.Add(vertices[edge[0]]);
                                 newPoints.Add(vertices[edge[1]]);//?-- this is a hall way
+                                
                                 //add to list to work out after
-                                edgesForHallway.Add(new Vector3[] { vertices[edge[0]], vertices[edge[1]] } );
+                              //  edgesForHallway.Add(new Vector3[] { vertices[edge[0]], vertices[edge[1]] } );
                             }
                             else
                             {
                                 Debug.Log("Remove marginal edge ? sometimes works sometimes doesnt - redo? voronoi pattern is right on ringpoints edge- could do a distance check when placing vor points - distance to ring point");
                                 Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.yellow);//add
+
+                               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                             //   c.transform.position = vertices[edge[0]];
+                             //   c.name = "vertice 0";
+                             //   c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                             //   c.transform.position = vertices[edge[1]];
+                             //   c.name = "vertice 1";
+
+                              //  newPoints.Add(vertices[edge[0]]);
+                              //  newPoints.Add(vertices[edge[1]]);
+
                             }
 
                         }
@@ -473,6 +530,8 @@ public class Interiors : MonoBehaviour
 
                             AddRingPointsToNextIntersect(newPoints, cellInfos, i, j, start,intersects[0]);
 
+                           
+
                         }
                     }
                     else//starting outside
@@ -482,10 +541,23 @@ public class Interiors : MonoBehaviour
                         {
                             Debug.DrawLine(vertices[edge[1]], intersects[0], Color.magenta);//add from intersection
 
-
+                            //add 0y
+                            Vector3 y0 = new Vector3(intersects[0].x, 0f, intersects[0].z);
                             newPoints.Add(intersects[0]);
-                            newPoints.Add(vertices[edge[1]]);
 
+                            //make y = 1f to indidcate this is a central (hallway) point
+                            Vector3 y1 = new Vector3(vertices[edge[1]].x, 1f, vertices[edge[1]].z);
+                            newPoints.Add(y1);
+
+                            
+                            //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            //c.transform.position = intersects[0];
+                            //c.name = "intersect 0";
+
+                           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                           // c.transform.position = y1;
+                           // c.name = "edge 1";
+                            
                         }
                     }
                 }
@@ -629,35 +701,71 @@ public class Interiors : MonoBehaviour
             //make cell mesh and object
             if (newPoints.Count > 0)
             {
-                //create hallways
-                int totalInteriorPoints = 0;
-                int totalExteriorPoints = 0;
-
-                for (int a = 0; a < newPoints.Count; a++)
-                {
-                    if (newPoints[a].y > 0f)
-                        totalInteriorPoints++;
-                    else
-                        totalExteriorPoints++;
-                }
-
-                //**TODO DELLY
-                //need to get remove small edges working
-                //need to add edge slide to the other cell which is on the door side-
-
-                newPoints = Hallways(vertices, cellInfos[i].intersectsForEdges, newPoints,ref makeDoor,ref doorEdgePos,ref doorEdgeFound0, ref doorEdgeFound1);
-
-
-                if (newPoints.Count > 3)//needs 4
+             
+                if (newPoints.Count > 2)//needs 4
                 {
                     GameObject area = Cell(newPoints);
-                    areas.Add(area);
+                    area.name = i.ToString();
+                    Hallways hallways = area.AddComponent<Hallways>();
+                    hallways.ringPoints = newPoints;
+                    hallways.targetPoints = newPoints;
+                    hallways.enabled = false;
+
+                    if (!doorPosFound)
+                    {
+                        doorEdgePos = DoorEdgePosition(newPoints, ref doorPosFound);
+                    }
+
+                    //split up again?
+                    //  Interiors nextInteriors = area.AddComponent<Interiors>();
+                    //  newPoints.Add(newPoints[0]);
+                    //  nextInteriors.ringPoints = newPoints;
+                    //  nextInteriors.cornerPoints = new List<Vector3>( vertices );
+
+                    //    nextInteriors.corners = vertices.Length;//cells to snip length? testing
+                    //  nextInteriors.enabled = false;
+                    //gameObject.GetComponent<MeshRenderer>().enabled = false;
+                    //areas.Add(area);
                 }
-              
             }
         }
 
-  
+
+    }
+
+    Vector3 DoorEdgePosition(List<Vector3> newPoints, ref bool doorPosFound)
+    {
+        //sacens cell for an edge which is suitable for a door
+
+        Vector3 doorEdgePos = Vector3.zero;
+
+        for (int i = 0; i < newPoints.Count; i++)
+        {
+
+            int prev = i - 1;
+            if (prev < 0)
+                prev = newPoints.Count - 1;
+
+            int next = i + 1;
+            if (next > newPoints.Count - 1)
+                next -= newPoints.Count;
+
+            if (newPoints[prev].y == 0f && newPoints[i].y == 0f && newPoints[next].y > 0f)
+            {
+
+
+                doorEdgePos = newPoints[i];
+                doorPosFound = true;
+
+
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = newPoints[i];
+                c.name = "hall edge for exterior door";
+            }
+        }
+
+        return doorEdgePos;
+
     }
 
     private void ClearAndReset()
@@ -676,6 +784,7 @@ public class Interiors : MonoBehaviour
         //Start();
         Interiors interiors = gameObject.AddComponent<Interiors>();
         interiors.ringPoints = ringPoints;
+        interiors.targetPoints = targetPoints;
         interiors.cornerPoints = cornerPoints;
         interiors.corners = corners;
         interiors.hallWidth = hallWidth;
@@ -774,7 +883,7 @@ public class Interiors : MonoBehaviour
         return newPoints;
     }
 
-    List<Vector3> Hallways(Vector3[] vertices, List<List<Vector3>> intersectsForCell, List<Vector3> newPoints,ref bool makeDoor,ref Vector3 doorEdgePos,ref bool doorEdgeFound0, ref bool doorEdgeFound1)
+    List<Vector3> Hallways(out List<Vector3> hallPoints, Vector3[] vertices, List<Vector3> newPoints,ref bool makeDoor,ref Vector3 doorEdgePos,ref bool doorEdgeFound0, ref bool doorEdgeFound1)
     {
         //as we make hallways, remember which points are on interior halls
         List<Vector3> hallEdges = new List<Vector3>();
@@ -819,8 +928,8 @@ public class Interiors : MonoBehaviour
             //interior point (not on ring points)
 
             //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            //c.transform.position = newPoints[i];
-            //c.name = "interior";
+           // c.transform.position = newPoints[i];
+           // c.name = "interior";
 
             //flatten and move towards centre
             // Vector3 centre = new Vector3(vertices[0].x, 0f, vertices[0].z);
@@ -833,6 +942,7 @@ public class Interiors : MonoBehaviour
             if (thisV3 == nextV3 || thisV3 == prevV3)//if using adjacent/remove small edges, this should be fixed
                 {
                     Debug.Log("Same - cell will be skipped");
+                    hallPoints = null;
                     return newPoints;
                 }
 
@@ -863,22 +973,26 @@ public class Interiors : MonoBehaviour
             //if coming from non hall and this is non hall but going to hall
             else if (newPoints[prev].y == 0f && newPoints[i].y == 0f && newPoints[next].y > 0f)
             {
-                /*
+               
                 GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = newPoints[prev];
-                c.name = "non,non, hall";
+                c.name = "non,non, hall " + doorEdgeFound0;
 
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = newPoints[i];
                 c.name = i.ToString();
 
-                */
+                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = doorEdgePos;
+                c.name = "door edge pos";
+
+
 
                 if (!doorEdgeFound0)
                 {
                     if (newPoints[i] == doorEdgePos)
                     {
-                        //c.name = "Door pos found";
+                        c.name = "Door pos found";
 
                         //slide to prev --//need to check for previous mesh points overlap
 
@@ -896,25 +1010,28 @@ public class Interiors : MonoBehaviour
 
                         Vector3 dirFromNext = (newPoints[i] - newPoints[next]).normalized;
                         Vector2 intersectV2 = Vector2.zero;
-                        //looking to see where the line projects on to to the outside of the building, suing miter position to help
+                        //looking to see where the line projects on to to the outside of the building/or hall (target points), suing miter position to help
 
                         Vector3 p2 = newPoints[i] - miter;
                         Vector3 p3 = p2 + (newPoints[i] - newPoints[next]);
                         Debug.DrawLine(p2, p3, Color.green);
-                        for (int aa = i, bb = 0; bb < newPoints.Count; bb++, aa--)
+                        //  Debug.Log("target count " + targetPoints.Count);
+
+                       
+                        for (int aa = i + 1 , bb = 0; bb < targetPoints.Count; bb++, aa--)
                         {
                             if (aa < 0)
-                                aa += newPoints.Count;
+                                aa += targetPoints.Count;
 
                             int aaPrev = aa - 1;
                             if (aaPrev < 0)
-                                aaPrev += newPoints.Count;
+                                aaPrev += targetPoints.Count;
 
 
 
-                            Vector3 p0 = newPoints[aaPrev];
-                            Vector3 p1 = newPoints[aa];
-                            Debug.DrawLine(p0, p1, Color.yellow);
+                            Vector3 p0 = targetPoints[aaPrev];
+                            Vector3 p1 = targetPoints[aa];
+                            
 
                             Vector2 a0 = new Vector2(p0.x, p0.z);
                             Vector2 a1 = new Vector2(p1.x, p1.z);
@@ -925,9 +1042,10 @@ public class Interiors : MonoBehaviour
                             if (LineSegmentsIntersection(a0, a1, a2, a3, out intersectV2))
                             {
                                 Vector3 intersectV3 = new Vector3(intersectV2.x, 0f, intersectV2.y);
-                               // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                               // c.transform.position = intersectV3;
-                              //  c.name = "intersect";
+
+                                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                c.transform.position = intersectV3;
+                                c.name = "hall";
 
                                 tempList.Add(intersectV3);
 
@@ -940,8 +1058,13 @@ public class Interiors : MonoBehaviour
                             }
                             else
                             {
-                                toRemove.Add(newPoints[aaPrev]);
-                                tempList.Remove(newPoints[aaPrev]);//working?
+                                Debug.DrawLine(p0, p1, Color.yellow);
+                                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                c.transform.position = targetPoints[aaPrev];
+                                c.name = "target aaPrev  to be removed " + bb.ToString(); ;
+
+                                toRemove.Add(targetPoints[aaPrev]);
+                                tempList.Remove(targetPoints[aaPrev]);//working?
 
 
                             }
@@ -950,16 +1073,26 @@ public class Interiors : MonoBehaviour
 
                     }
                     else
+                    {
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = newPoints[i];
+                        c.name = "new points i to be added 0";
                         tempList.Add(newPoints[i]);
+                    }
                 }
                 else
+                {
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = newPoints[i];
+                    c.name = "new points i to be added 1";                    
                     tempList.Add(newPoints[i]);
 
+                }
 
                 //debugs in order so we can change name of middle cube
-               //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                 //c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 // c.transform.position = newPoints[next];
-                // c.name = next.ToString();
+               //  c.name = next.ToString();
 
             }
             //coming from non hall but then on to double hall
@@ -975,7 +1108,7 @@ public class Interiors : MonoBehaviour
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = newPoints[i];
                 c.name = i.ToString();
-
+                
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = newPoints[next];
                 c.name = next.ToString();
@@ -990,9 +1123,9 @@ public class Interiors : MonoBehaviour
 
                     tempList.Add(newPoints[i] - miter);//can also normalize the miter and * by hallsize?
 
-                    //     c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    //    c.transform.position = newPoints[i] - miter;
-                    //  c.name = "using miter";
+                    //   GameObject  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   //     c.transform.position = newPoints[i] - miter;
+                   //   c.name = "using miter";
 
                    
 
@@ -1018,8 +1151,12 @@ public class Interiors : MonoBehaviour
                     //remeber this edge
                     hallEdges.Add( newPoints[i] - miter);
 
+                  //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = newPoints[i] - miter;
+                  //  c.name = "Hall ?";
 
-                    //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+                    //c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     //  c.transform.position = slide;
                     //  c.name = "using edge slide and miter " + ", dE0 = " + doorEdgeFound0 + ", makedoor = " + makeDoor + ", dE1 = " + doorEdgeFound1;
                 }
@@ -1078,18 +1215,20 @@ public class Interiors : MonoBehaviour
 
                 //remeber this edge
                 hallEdges.Add(   newPoints[i] - miter);
+
+                 
             }
             //
             else if (newPoints[prev].y > 0f && newPoints[i].y == 0f && newPoints[next].y == 0f)
             {
                 //we can make an exterior door on this edge
-                if (makeDoor)
+                if (newPoints[i] == doorEdgePos)
                 {
                     int prevPrev = prev - 1;
                     if (prevPrev < 0)
                         prevPrev += ringPoints.Count;
 
-                    /*
+                    
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = newPoints[prev];
                     c.name = "hall,non, non ";
@@ -1102,33 +1241,64 @@ public class Interiors : MonoBehaviour
                     c.transform.position = newPoints[next];
                     c.name = next.ToString();
                     
-                    */
+                    
                     //this is a referenced argument
                     makeDoor = false;//ref
                                      //remember the position we started at so the adjacent cell knows to leave space for a door hallway
 
-                    doorEdgePos = newPoints[i];//ref//already asigned
+                    //doorEdgePos = newPoints[i];//ref//already asigned from DoorEdgePos
 
-                    tempList.RemoveAt(tempList.Count - 1);//should we do this from another edge type - hall to no hall?
+                    if (tempList.Count > 0)
+                    {
+                        if (hallEdges.Contains(tempList[tempList.Count - 1]))
+                        {
+                            //GameObject cr = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                           // cr.transform.position = tempList[tempList.Count - 1];
+                           // cr.name = "hall remove";
+
+                            hallEdges.Remove(tempList[tempList.Count - 1]);
+                            
+                        }
+
+                    
+
+                        tempList.RemoveAt(tempList.Count - 1);//should we do this from another edge type - hall to no hall?
+
+
+                    }
 
                     //add a miter
                     Vector3 miter = MiterDirection(newPoints[prevPrev], newPoints[prev], newPoints[i],hallSize);
                     tempList.Add(newPoints[prev] - miter);
 
+                   // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   // c.transform.position = newPoints[prev] - miter;
+                   //   c.name = "hall miter add for prev";
+                   // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   // c.transform.position = newPoints[prev] - miter;
+                   // c.name = "hall miter add for this";
+
+                    //adding two fro prev edge and for this edge
+                    hallEdges.Add(newPoints[prev] - miter);
+                    hallEdges.Add(newPoints[prev] - miter);
+
                     Vector3 p2 = newPoints[prev] - miter;
                     Vector3 p3 = p2 + (newPoints[i] - newPoints[prev])*2;//enough?
                     Debug.DrawLine(p2, p3, Color.green);
-                    for (int aa = i, bb = 0; bb < newPoints.Count;bb++, aa++)
+                    for (int aa = i-1, bb = 0; bb < targetPoints.Count;bb++, aa++)
                     {
-                        if (aa > newPoints.Count - 1)
-                            aa -= newPoints.Count;
+                        if (aa > targetPoints.Count - 1)
+                            aa -= targetPoints.Count;
+
+                        if (aa < 0)
+                            aa += targetPoints.Count;
 
                         int aaPrev = aa - 1;
                         if (aaPrev < 0)
-                            aaPrev += newPoints.Count;
+                            aaPrev += targetPoints.Count;
 
-                        Vector3 p0 = newPoints[aaPrev];
-                        Vector3 p1 = newPoints[aa];
+                        Vector3 p0 = targetPoints[aaPrev];
+                        Vector3 p1 = targetPoints[aa];
                         Debug.DrawLine(p0, p1, Color.red);
 
                         Vector2 a0 = new Vector2(p0.x, p0.z);
@@ -1140,9 +1310,9 @@ public class Interiors : MonoBehaviour
                         if (LineSegmentsIntersection(a0, a1, a2, a3, out intersectV2))
                         {
                             Vector3 intersectV3 = new Vector3(intersectV2.x, 0f, intersectV2.y);
-                          //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                          //  c.transform.position = intersectV3;
-                          //  c.name = "intersect";
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = intersectV3;
+                            c.name = "intersect red";
 
                             tempList.Add(intersectV3);
                          //    tempList.Add(newPoints[aa]);
@@ -1150,8 +1320,12 @@ public class Interiors : MonoBehaviour
                             //remeber this edge
                             hallEdges.Add(intersectV3);
 
+                             // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                             // c.transform.position = intersectV3;
+                             // c.name = "hall - intersect";
+
                             //force skip to this point - we don't need these points, just the intersect
-                            i = aaPrev;
+                           // i++;// = aaPrev;
                                     
                             break;
 
@@ -1160,9 +1334,9 @@ public class Interiors : MonoBehaviour
                 }
                 else
                 {
-                  //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                  //  c.transform.position = newPoints[i];
-                  //  c.name = "else";
+                   // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   // c.transform.position = newPoints[i];
+                   // c.name = "else";
 
                     tempList.Add(newPoints[i]);
                 }
@@ -1184,8 +1358,8 @@ public class Interiors : MonoBehaviour
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = newPoints[next];
                 c.name = next.ToString();
-
                 */
+                
                 //create geometry for corner if previous point isnt an exterior door
                 if (doorEdgePos != newPoints[prev])
                 {
@@ -1194,11 +1368,22 @@ public class Interiors : MonoBehaviour
                     //add a littl extra point to make a wall for an interior door
                     Vector3 slide = newPoints[i] + (newPoints[prev] - newPoints[i]).normalized * hallSize;
                     tempList.Add(slide);
+                  //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = (slide);
+                  //  c.name = "hall slide 0";
+                    hallEdges.Add(slide);
 
+                    //this will get moved if door edge? - it gets removed
                     slide = newPoints[i] + (newPoints[next] - newPoints[i]).normalized * hallSize;
                     tempList.Add(slide);
 
-                   // tempList.Add(newPoints[i]);
+                 //   c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                 //   c.transform.position = (slide);
+                 //  c.name = "hall slide 1";
+                    hallEdges.Add(slide);
+                    
+
+                    // tempList.Add(newPoints[i]);
                 }
                 else
                 {
@@ -1209,6 +1394,30 @@ public class Interiors : MonoBehaviour
                     tempList.Add(slide);
 
                     
+                   // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = (newPoints[i] - miter);
+                  //  c.name = "hall m0";
+
+                    hallEdges.Add(newPoints[i] - miter);
+
+                    //add another for edge for next
+                  //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = (newPoints[i] - miter);
+                  //  c.name = "hall m1";
+                    
+                    hallEdges.Add(newPoints[i] - miter);
+
+
+                   // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //      c.transform.position = (slide);
+                  //      c.name = "hall n";
+
+                        hallEdges.Add(slide);
+                  
+
+
+
+
                 }
 
 
@@ -1217,9 +1426,9 @@ public class Interiors : MonoBehaviour
 
         for (int i = 0; i < toRemove.Count; i++)
         {
-            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = toRemove[i];
-            c.name = "to remove";
+          //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+         //   c.transform.position = toRemove[i];
+         //   c.name = "to remove";
 
             tempList.Remove(toRemove[i]);
         }
@@ -1228,6 +1437,8 @@ public class Interiors : MonoBehaviour
 
         newPoints = new List<Vector3>( tempList);
 
+        hallPoints = hallEdges;
+
         return newPoints;
     }
 
@@ -1235,9 +1446,9 @@ public class Interiors : MonoBehaviour
     {
         for (int i = 0; i < edges.Count; i++)
         {
-              //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
               //  c.transform.position = edges[i];
-               
+            //c.name = "hall edge for exterior door";
 
 
             }
@@ -1399,15 +1610,22 @@ public class Interiors : MonoBehaviour
                 c.name = "np";
             }
 
-            //flatten
-            newPoints[a] = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
-
-            avg += newPoints[a];
+            //flatten - working on THIS
+            Vector3 flat = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
+            avg += flat;// newPoints[a];
+           // newPoints[a] = flat;
         }
-
         avg /= newPoints.Count;
 
+        
         newPoints.Insert(0, avg);
+
+        //recentre so mesh is local 
+        for (int i = 0; i < newPoints.Count; i++)
+        {
+            newPoints[i] -= avg;
+        }
+
 
         List<int> trianglesL = new List<int>();
 
@@ -1427,6 +1645,8 @@ public class Interiors : MonoBehaviour
         trianglesL.Add(1);
 
         GameObject roomFloor = new GameObject();
+        roomFloor.transform.parent = transform;
+        roomFloor.transform.position = new Vector3( avg.x,transform.position.y,avg.z);
         roomFloor.transform.position += Vector3.up * 10;///888test
         roomFloor.name = "RoomFloor";
         roomFloor.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Grey") as Material;
@@ -1441,6 +1661,8 @@ public class Interiors : MonoBehaviour
         mesh.RecalculateBounds();
 
         mf.mesh = mesh;
+
+        
 
 
 
@@ -1487,7 +1709,22 @@ public class Interiors : MonoBehaviour
         return (pa - ba * (Vector3.Dot(pa, ba) / Vector3.Dot(ba, ba))).magnitude;
     }
 
-    
+
+    public static bool PointInTriangle(Vector2 p, Vector2 p0, Vector2 p1, Vector2 p2)
+    {
+        var s = p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y;
+        var t = p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y;
+
+        if ((s < 0) != (t < 0))
+            return false;
+
+        var A = -p1.y * p2.x + p0.y * (p2.x - p1.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y;
+
+        return A < 0 ?
+                (s <= 0 && s + t >= A) :
+                (s >= 0 && s + t <= A);
+    }
+
     class IntersectionInfo
     {
         public Vector3 intersection;

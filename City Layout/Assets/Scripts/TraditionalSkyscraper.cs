@@ -698,11 +698,13 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
             //interiors
             //drop some mesh data to help later when planning interior
-            Interiors interiors = storey.AddComponent<Interiors>();
+            Interiors interiors = floorAndCeiling[1].AddComponent<Interiors>();
             interiors.ringPoints = RingPointsForInterior(ringEdgePoints, ringCornerPoints);//orgnaises two lists in two one
+            interiors.targetPoints =new List<Vector3>( interiors.ringPoints );//looking for points on outside of own cell for door
             interiors.cornerPoints = cornerPoints;
             interiors.corners = ringCornerPoints.Count;
-            //interiors.enabled = false;
+           // interiors.underSide = floorAndCeiling[1];//second to be made in FloorAndCeiling method
+           // interiors.enabled = false;
 
             yield break;
         }
@@ -1165,8 +1167,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         finalRingVertices= finalRingVertices.Distinct().ToList();
 
-        //make final loop point
-        finalRingVertices.Add(finalRingVertices[0]);
+        //make final loop point - dont do, just clamping lists when working on them
+       // finalRingVertices.Add(finalRingVertices[0]);
 
         bool showCubes = false;
         if (showCubes)
@@ -1791,12 +1793,13 @@ public class TraditionalSkyscraper : MonoBehaviour {
         roof.transform.parent = parent.transform;
         roof.name = "Roof";
         //can do underside of floor too            
-        flip = true;
+        flip = true; 
         GameObject underSide = TriangulateRing(ringPoints, flip);
         underSide.transform.parent = parent.transform;
         underSide.name = "UnderSide";
         underSide.layer = LayerMask.NameToLayer("Roof");//for interior planning
-        
+       
+
 
         floorAndCeiling.Add(roof);
         floorAndCeiling.Add(underSide);
