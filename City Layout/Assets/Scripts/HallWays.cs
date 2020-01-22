@@ -6,76 +6,88 @@ using UnityEngine;
 public class Hallways : MonoBehaviour
 {
     public bool makeHalls = false;
-
-    public List<Vector3> ringPoints = new List<Vector3>();
+    public bool reCentreMesh = false;
+    public List<Vector3> interiorsRingPoints = new List<Vector3>();
     public List<Vector3> targetPoints = new List<Vector3>();
+
+    List<Vector3> ringPoints = new List<Vector3>();
     public float hallSize = 1f;
-
-    Vector3 doorEdgePos;
-
     // Start is called before the first frame update
     void Start()
     {
 
-        bool makeExteriorDoor = ExteriorDoor();
+        //make local  - we can make changes to this without overwriting original info
+        ringPoints = new List<Vector3>(interiorsRingPoints);
 
-        AlterMesh(makeExteriorDoor);
+        if (reCentreMesh == false)
+        {
+            //we need to puit the points back in world space to work out
+            for (int i = 0; i < ringPoints.Count; i++)
+            {
+                ringPoints[i] += new Vector3(transform.position.x, 0f, transform.position.z);
+            }
+        }
+
+        for (int i = 0; i < targetPoints.Count; i++)
+        {
+           
+
+            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = targetPoints[i];
+            c.name = "target";
+
+
+
+        }
+
+
+        AlterMeshSimple();
     }
 
     private void Update()
     {
         if (makeHalls)
         {
+            ringPoints = new List<Vector3>(interiorsRingPoints);
+
             Start();
             makeHalls = false;
         }
     }
 
-    bool ExteriorDoor()
+
+    void AlterMeshSimple()
     {
-        //check if this cell has an exterior door on one of its edges
-        bool exteriorDoor = false;
-
-        doorEdgePos = GetComponentInParent<Interiors>().doorEdgePos;
-
-        for (int i = 0; i < ringPoints.Count; i++)
-        {
-            if (ringPoints[i] == doorEdgePos)
-            {
-
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = doorEdgePos;
-                c.name = "door edge HallWays.cs";
-
-                exteriorDoor = true;
-            }
-        }
-
-
-
-
-        return exteriorDoor;
-    }
-
-    void AlterMesh(bool makeExteriorDoor)
-    {
+        
         List<Vector3> tempList = new List<Vector3>();
 
         int safety = 0;
+        GameObject c;
+       
 
+        List<Vector3> blockList = new List<Vector3>();
+        //gather hall edges and centre points(where it meets the edge and internal halls)
+        List<Vector3> hallPoints = new List<Vector3>();
         //make space for halls by pulling in vertices
         for (int i = 0; i < ringPoints.Count; i++)
         {
             safety++;
+            if (safety > 100)
+            {
+                Debug.Log("safety");
+                break;
 
-          // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            //c.transform.position = ringPoints[i];
-            //c.name = "rp, y = " + ringPoints[i].y;
+            }
+
+            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = ringPoints[i];
+            c.name = i.ToString();
+
 
 
             int prev = i - 1;
             if (prev < 0)
-                prev = ringPoints.Count - 1;
+                prev += ringPoints.Count;
 
             int next = i + 1;
             if (next > ringPoints.Count - 1)
@@ -88,57 +100,14 @@ public class Hallways : MonoBehaviour
             if (ringPoints[prev].y == 0f && ringPoints[i].y == 0f && ringPoints[next].y == 0f)
             {
                 //add this first
-                tempList.Add(ringPoints[i]);
-            }
-
-            //if coming from non hall and this is non hall but going to hall
-            else if (ringPoints[prev].y == 0f && ringPoints[i].y == 0f && ringPoints[next].y > 0f)
-            {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[prev];
-                c.name = "rp, prev 0";
-
-                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[i];
-                c.name = "rp, this 0";
-
-                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[next];
-                c.name = "rp, next 1";
-
-                //if this cell has been chosen to have an exterior door on it
-
-                if (makeExteriorDoor)
-                {
-                    //if not a door pos
-                    if (doorEdgePos != ringPoints[i])
-                    {
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = ringPoints[i];
-                        c.name = "rp, not door";
-
-                        tempList.Add(ringPoints[i]);
-                    }
-                    //and the next point is a door position
-                    else
-                    {
-                        Vector3 intersectV3 = IntersectNext(prev, i, next,false);
-                        tempList.Add(intersectV3);
-                    }                    
-                }
-                else if (!makeExteriorDoor)
-                {
-                    //not tested
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = ringPoints[i];
-                    c.name = "exterior door = false";
-
+                if(!blockList.Contains(ringPoints[i]))
                     tempList.Add(ringPoints[i]);
-                }
             }
             else if (ringPoints[prev].y == 0f && ringPoints[i].y > 0f && ringPoints[next].y == 0f)
             {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                
+
+                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[prev];
                 c.name = "non,hall , non";
 
@@ -150,70 +119,36 @@ public class Hallways : MonoBehaviour
                 c.transform.position = ringPoints[next];
                 c.name = next.ToString();
 
-                if (makeExteriorDoor)
-                {
-                    //check to see if prev or next point is a an exterior door. we ahve a hall point surrounded by exterior in this case
-                    if (doorEdgePos == ringPoints[prev])
-                    {
+                Vector3 miterDir = MiterDirection(ringPoints[prev], ringPoints[i], ringPoints[next],hallSize);
+                tempList.Add(ringPoints[i] - miterDir);
 
-                        //NOT TESTED
-                        //use direction of original edge
-                        Vector3 edgeDir = (ringPoints[i] - ringPoints[prev]);//?
+                //add halls
+                hallPoints.Add(ringPoints[prev]);
+                hallPoints.Add(ringPoints[i]);
+                hallPoints.Add(ringPoints[next]);
 
-                        //use previous point - is it just last in templist? //out of index possible?
-                        if (tempList.Count == 0)
-                        {
-                            //in order to work out this point we need the point before it to be have been worked out. let's add this point to the end of the list and wait for the other points to be worked out ( a dangerous game adding to a list we are iterating through)
-                            if (safety > 5)
-                            {
-                                //just in case
-                                Debug.Log("Safety kicked in, adding to list as iterating");
-                                return;
-                            }
 
-                            ringPoints.Add(ringPoints[i]);
-                            ringPoints.RemoveAt(i);
-                            i--;
-                            continue;
-                        }
-
-                        Vector3 intersectV3 = IntersectNext(prev, i, next, true);
-                        tempList.Add(intersectV3);
-
-                    }
-                    else if (doorEdgePos == ringPoints[next])
-                    {
-                        Vector3 intersectV3 = IntersectNext(prev, i, next,false);
-                        tempList.Add(intersectV3);
-                    }
-                }
-                else
-                {
-                    
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = ringPoints[i];
-                    c.name = "exterior door = false non hall non";
-
-                    Vector3 slide = ringPoints[i] + (ringPoints[prev] - ringPoints[i]).normalized * hallSize;
-                    // tempList.Add(slide)
-
-                    Vector3 miter = MiterDirection(ringPoints[prev], ringPoints[i], ringPoints[next], hallSize);
-
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position =ringPoints[i] - miter.normalized*hallSize;
-                    c.name = "exterior door = miter";
-
-                    //WORKIN ON THIS
-
-                    tempList.Add(ringPoints[i]);
-                }
             }
             else if (ringPoints[prev].y > 0f && ringPoints[i].y == 0f && ringPoints[next].y == 0f)
             {
+                //find interect on outer ring/target points
+                Vector3 foundIntersect = Vector3.zero;
 
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //if target points equal ring?
+                int indexFoundAt = 0;
+                if (IntersectNext(out foundIntersect,out indexFoundAt,ringPoints,ref blockList, hallSize,prev,i,next,i,true,false,false))
+                {
+                    tempList.Add(foundIntersect);
+                    i = indexFoundAt;
+                }
+                
+            }
+            else if (ringPoints[prev].y == 0f && ringPoints[i].y == 0f && ringPoints[next].y > 0f)
+            {
+
+                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[prev];
-                c.name = "hall , non , non";
+                c.name = "non,non  ,hall";
 
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[i];
@@ -223,68 +158,76 @@ public class Hallways : MonoBehaviour
                 c.transform.position = ringPoints[next];
                 c.name = next.ToString();
 
-                if (makeExteriorDoor)
+                //find interect on outer ring/target points
+
+                if (tempList.Count == 0)
                 {
-                    if (doorEdgePos == ringPoints[i])
-                    {
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = ringPoints[i];
-                        c.name = "door edge ==";
+                 //   Debug.Log("did this");//working needed?
+                  //  ringPoints.Add(ringPoints[i]);
+                 //   ringPoints.RemoveAt(i);
+                    
+                 //   i--;
 
-                        //we need to find where the hall intersects
-
-                        //use direction of original edge
-                       
-
-                        //use previous point - is it just last in templist? //out of index possible?
-                        if(tempList.Count == 0)
-                        {
-                            c.name = "list = 0,";//special case
-                            //in order to work out this point we need the point before it to be have been worked out. let's add this point to the end of the list and wait for the other points to be worked out ( a dangerous game adding to a list we are iterating through)
-                            if (safety > 5)
-                            {
-                                //just in case
-                                Debug.Log("Safety kicked in, adding to list as iterating");
-                                return;
-                            }                           
-
-                            ringPoints.Add(ringPoints[i]);
-                            ringPoints.RemoveAt(i);
-                            i--;
-                            continue;
-                        }
-
-
-                        Vector3 intersectV3 = IntersectNext(prev, i, next, true);
-                        tempList.Add(intersectV3);
-                    }
-                    else
-                    {
-                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        c.transform.position = ringPoints[i];
-                        c.name = "door edge != ";
-
-                        tempList.Add(ringPoints[i]);
-                    }
-                }
-                else
-                {
-                    //not tested
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = ringPoints[i];
-                    c.name = "exterior door = false";
-
-                    tempList.Add(ringPoints[i]);
+                 //   continue;                  
                 }
 
+
+                Vector3 foundIntersect = Vector3.zero;
+                int indexFoundAt = 0;
+                if (IntersectNext(out foundIntersect, out indexFoundAt, ringPoints, ref blockList, hallSize, prev, i, next, i, false, false,true))
+                {
+                    tempList.Add(foundIntersect);
+
+                  //  i = indexFoundAt;
+                }
             }
+            else if (ringPoints[prev].y == 0f && ringPoints[i].y > 0f && ringPoints[next].y > 0f)
+            {
+                //need to do
+                Debug.Log("0 higher higher");
+            }
+            else if (ringPoints[prev].y > 0f && ringPoints[i].y > 0f && ringPoints[next].y > 0f)
+            {
+                //need to do
+                Debug.Log("ALL HALL");
+            }
+            else if (ringPoints[prev].y > 0f && ringPoints[i].y == 0f && ringPoints[next].y > 0f)
+            {
+                //need to do
+                Debug.Log("up down up");
+            }
+
         }
 
-        Cell(tempList);
+
+        
+
+        GameObject cell = Cell( tempList);
+
+        //add interior
+        /*
+        Hallways hallways = cell.AddComponent<Hallways>();
+        hallways.interiorsRingPoints = tempList;
+        hallways.targetPoints = hallPoints;
+        hallways.reCentreMesh = true;
+        hallways.enabled = false;
+        */
+        Interiors interiors = cell.AddComponent<Interiors>();
+        interiors.ringPoints = tempList;
+        interiors.targetPoints = hallPoints;
+        interiors.cornerPoints = tempList;
+        interiors.corners = 3;
+        interiors.enabled = false;
+
     }
 
-    Vector3 IntersectNext(int prev, int i, int next, bool flipDir)
+
+    static bool IntersectNext(out Vector3 foundIntersect,out int indexFoundAt, List<Vector3> ringPoints, ref List<Vector3> blockList,  float hallSize, int prev, int i, int next,int targetStart, bool flipDir, bool onlyLookForHalls,bool addToBlock)
     {
+
+        bool foundTemp = false;
+        indexFoundAt = 0;
+        foundIntersect = Vector3.zero;
         //find where a miter point plus a direction intersects with target points
 
         Vector3 miter = MiterDirection(ringPoints[prev], ringPoints[i], ringPoints[next], hallSize);
@@ -292,7 +235,7 @@ public class Hallways : MonoBehaviour
         //now project to back to find intersect (we are sliding the whole edge)
 
         
-        Vector3 edgeDir = (ringPoints[i] - ringPoints[next]);
+        Vector3 edgeDir = (ringPoints[i] - ringPoints[next])*1000;//perhaps another function would be better here for line segment check
         if(flipDir)
             edgeDir = (ringPoints[i] - ringPoints[prev]);//other
 
@@ -301,24 +244,46 @@ public class Hallways : MonoBehaviour
 
         Debug.DrawLine(p2, p3, Color.magenta);
         Vector2 intersectV2 = Vector2.zero;
-        for (int aa = i + 1, bb = 0; bb < targetPoints.Count; bb++, aa--)
+        
+       // float distance = Mathf.Infinity;
+
+        for (int aa = targetStart + 1, bb = 0; bb < ringPoints.Count; bb++, aa--)
         {
-            if (aa > targetPoints.Count - 1)
-                aa -= targetPoints.Count;
+           
+            if (aa > ringPoints.Count - 1)
+                aa -= ringPoints.Count;
 
             if (aa < 0)
-                aa += targetPoints.Count;
+                aa += ringPoints.Count;
 
             int aaPrev = aa - 1;
             if (aaPrev < 0)
-                aaPrev += targetPoints.Count;
+                aaPrev += ringPoints.Count;
+
+           
+
+            Vector3 p0 = ringPoints[aaPrev];
+            Vector3 p1 = ringPoints[aa];
+
+            if (onlyLookForHalls)
+            {
+                //skip any ring points -only looking for halls
+                if (p0.y == 0f & p1.y == 0f)
+                    continue;
+            }
 
 
+            //if(tempList.Contains(targetPoints[aa]))
+           // {
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = ringPoints[aa];
+                c.name = "to remove";
 
-            Vector3 p0 = targetPoints[aaPrev];
-            Vector3 p1 = targetPoints[aa];
+            if(addToBlock)
+                blockList.Add(ringPoints[aa]);
+           // }
 
-            Debug.DrawLine(p2, p3, Color.yellow);
+          //  Debug.DrawLine(p2, p3, Color.yellow);
 
 
             Vector2 a0 = new Vector2(p0.x, p0.z);
@@ -326,23 +291,62 @@ public class Hallways : MonoBehaviour
             Vector2 a2 = new Vector2(p2.x, p2.z);
             Vector2 a3 = new Vector2(p3.x, p3.z);
 
-
-            if (LineSegmentsIntersection(a0, a1, a2, a3, out intersectV2))
+            Vector2 tempV2 = Vector2.zero;
+            if (LineSegmentsIntersection(a0, a1, a2, a3, out tempV2))
             {
-                Vector3 intersectV3 = new Vector3(intersectV2.x, 0f, intersectV2.y);
+                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = new Vector3(tempV2.x,0f,tempV2.y);
+                c.name = "intersect b4 distance check";
 
-                return intersectV3;
+             //   Debug.DrawLine(p0, p1, Color.red);
+             //   Debug.DrawLine(p2, p3, Color.cyan);
 
+                //we want the closest intersect
+                //float tempD = Vector2.Distance(p2, tempV2);
+                //if (tempD < distance)
+                {
+                    intersectV2 = tempV2;
+                   // distance = tempD;
 
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = new Vector3(tempV2.x, 0f, tempV2.y);
+                    c.name = "intersect after distance check";
 
+                    foundTemp = true;
+
+                    foundIntersect = new Vector3(intersectV2.x, 0f, intersectV2.y);
+                    indexFoundAt = aaPrev;
+                   // foundIntersects.Add(foundIntersect);
+
+                    break;
+                    
+                }
             }
         }
+        //force only adding 1
+        // if(foundTemp)
+        //     foundIntersects.Add(foundIntersect);
 
-        return Vector3.zero;
+
+        /*
+        //order intersecst by found
+        foundIntersects.Sort(delegate (Vector3 a, Vector3 b)
+        {
+            return Vector3.Distance(p2, a)
+            .CompareTo(
+              Vector3.Distance(p2, b));
+        });
+
+       // foundIntersects.Reverse();
+       */
+
+        return foundTemp;
     }
-
-    public GameObject Cell(List<Vector3> newPoints)
+  
+    public GameObject Cell(List<Vector3> tempList)
     {
+        List<Vector3> newPoints = new List<Vector3>(tempList);
+
         GetComponent<MeshRenderer>().enabled = false;
        // newPoints = newPoints.Distinct().ToList();//.linq
 
@@ -353,9 +357,9 @@ public class Hallways : MonoBehaviour
         {
             if (doCubes)
             {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = newPoints[a];
-                c.name = "np";
+               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+              //  c.transform.position = newPoints[a];
+              //  c.name = "np";
             }
 
             //flatten - working on THIS
@@ -368,10 +372,14 @@ public class Hallways : MonoBehaviour
 
         newPoints.Insert(0, avg);
 
-        //recentre so mesh is local 
-        for (int i = 0; i < newPoints.Count; i++)
+        if (reCentreMesh)
         {
-            newPoints[i] -= transform.position;
+            //recentre so mesh is local 
+            for (int i = 0; i < newPoints.Count; i++)
+            {
+                newPoints[i] -=  new Vector3(transform.position.x, 0f, transform.position.z);
+
+            }
         }
 
 
@@ -395,7 +403,7 @@ public class Hallways : MonoBehaviour
         GameObject roomFloor = new GameObject();
         roomFloor.transform.parent = transform;
         roomFloor.transform.localPosition = Vector3.zero;// transform.parent.position;// new Vector3(avg.x, transform.position.y, avg.z);
-        roomFloor.transform.position += Vector3.up * 10;///888test
+       // roomFloor.transform.position += Vector3.up * 10;///888test
         roomFloor.name = "RoomFloor";
         roomFloor.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Grey") as Material;
         MeshFilter mf = roomFloor.AddComponent<MeshFilter>();
@@ -421,7 +429,7 @@ public class Hallways : MonoBehaviour
     }
 
     //helper functions
-    Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2, float borderSize)
+    static Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2, float borderSize)
     {
         //flatten miters in this case
         p0 = new Vector3(p0.x, 0f, p0.z);
@@ -450,7 +458,7 @@ public class Hallways : MonoBehaviour
         //  Debug.DrawLine(p0, p1, Color.yellow);
         //   Debug.DrawLine(p2, p1, Color.yellow);
         // if(draw)
-        Debug.DrawLine(p1, p1 - miterDirection, Color.yellow);
+       // Debug.DrawLine(p1, p1 - miterDirection, Color.magenta);
         //Debug.Break();
         //GetComponent<MeshRenderer>().enabled = true;
         /*
@@ -470,7 +478,7 @@ public class Hallways : MonoBehaviour
         //
         return miterDirection;
     }
-
+  
     public static bool LineSegmentsIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersection)
     {
         intersection = Vector2.zero;

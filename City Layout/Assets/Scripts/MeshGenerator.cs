@@ -311,10 +311,11 @@ public class MeshGenerator : MonoBehaviour {
 
             
             CalculateAdjacents();
-            
-            RemoveSmallEdges();
-            
-           
+
+
+             RemoveSmallEdges();
+            //ReMesh(true);//NEED if not removinfg small edges - small edges does this at bottom of method
+
 
             //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
             Edges();
