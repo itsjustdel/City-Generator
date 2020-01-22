@@ -704,7 +704,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             interiors.cornerPoints = cornerPoints;
             interiors.corners = ringCornerPoints.Count;
            // interiors.underSide = floorAndCeiling[1];//second to be made in FloorAndCeiling method
-           // interiors.enabled = false;
+            interiors.enabled = false;
 
             yield break;
         }

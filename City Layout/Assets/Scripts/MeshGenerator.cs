@@ -78,8 +78,17 @@ public class MeshGenerator : MonoBehaviour {
     float tolerance =5f;
     public List<List<List<int>>> edges = new List<List<List<int>>>();//cell number//edge number//edge numbers (create struct)
 
+    Material standardMaterial;
+
     public void Start ()
     {
+
+        //steal the main material froma  primitive
+        GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        standardMaterial = tempCube.GetComponent<MeshRenderer>().material;
+        standardMaterial.SetFloat("_Metallic", 0.5f);
+        Destroy(tempCube);
+
 
         tolerance = minEdgeSize;//testing
 
@@ -321,17 +330,15 @@ public class MeshGenerator : MonoBehaviour {
             Edges();
 
             CalculateAdjacents();
-            /*
-             * 
-             * 
+           
             //interiors - each floor
             for (int i = 0; i < cells.Count; i++)
             {
-                cells[i].GetComponent<MeshRenderer>().enabled = true;
+                cells[i].GetComponent<MeshRenderer>().enabled = false;
                 
             }
 
-            */
+            
         }
      //   yield break;
     }
@@ -529,6 +536,7 @@ public class MeshGenerator : MonoBehaviour {
 
                     if (interior)
                     {
+                        /*
                         GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                         c.transform.position = p0;
                         c.name = a.ToString() + " " + i.ToString() + " 0 first";
@@ -538,6 +546,7 @@ public class MeshGenerator : MonoBehaviour {
                         c.name = a.ToString() + " " + i.ToString() + " 1 ";
                         c.transform.parent = cells[a].transform;
                         //find all other vertices which equal this
+                        */
                     }
                     //add this
                     List<List<int>> toMove = new List<List<int>>();
@@ -1172,11 +1181,8 @@ public class MeshGenerator : MonoBehaviour {
         //changing value makes it look darker or light-almost liekthe lighting engine does. keeping static
         float value = 1f;// UnityEngine.Random.Range(.5f, 1f);// 0.5f;
 
-        //steal the main material froma  primitive
-        GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);        
-        Material standardMaterial = tempCube.GetComponent<MeshRenderer>().material;
-        standardMaterial.SetFloat("_Metallic", 0.5f);
-        Destroy(tempCube);
+       
+
         int tintsAndShades = UnityEngine.Random.Range(3, 7);//randomimse?
         //run through cells
         for (int i = 0; i < cells.Count; i++)

@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class Hallways : MonoBehaviour
 {
+    public int iterations = 0;
     public bool makeHalls = false;
     public bool reCentreMesh = false;
     public List<Vector3> interiorsRingPoints = new List<Vector3>();
@@ -30,13 +31,10 @@ public class Hallways : MonoBehaviour
 
         for (int i = 0; i < targetPoints.Count; i++)
         {
-           
 
-            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = targetPoints[i];
-            c.name = "target";
-
-
+          //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+          //  c.transform.position = targetPoints[i];
+           // c.name = "target";
 
         }
 
@@ -79,9 +77,9 @@ public class Hallways : MonoBehaviour
 
             }
 
-            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = ringPoints[i];
-            c.name = i.ToString();
+           // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+         //   c.transform.position = ringPoints[i];
+         //   c.name = i.ToString();
 
 
 
@@ -200,24 +198,49 @@ public class Hallways : MonoBehaviour
         }
 
 
-        
+        for (int i = tempList.Count-1; i >= 0; i--)
+        {
+            if(blockList.Contains( tempList[i]))
+            {
+                tempList.RemoveAt(i);
+            }
+        }
 
-        GameObject cell = Cell( tempList);
+        if (tempList.Count > 3)
+        {
+            GameObject cell = Cell(tempList);
 
-        //add interior
-        /*
-        Hallways hallways = cell.AddComponent<Hallways>();
-        hallways.interiorsRingPoints = tempList;
-        hallways.targetPoints = hallPoints;
-        hallways.reCentreMesh = true;
-        hallways.enabled = false;
-        */
-        Interiors interiors = cell.AddComponent<Interiors>();
-        interiors.ringPoints = tempList;
-        interiors.targetPoints = hallPoints;
-        interiors.cornerPoints = tempList;
-        interiors.corners = 3;
-        interiors.enabled = false;
+
+            //split up again?
+            if (iterations < 1)
+            {
+                Interiors interiors = cell.AddComponent<Interiors>();
+                //flatten
+                for (int i = 0; i < tempList.Count; i++)
+                {
+                    tempList[i] = new Vector3(tempList[i].x, 0f, tempList[i].z);
+                }
+                for (int i = 0; i < targetPoints.Count; i++)
+                {
+                    targetPoints[i] = new Vector3(targetPoints[i].x, 0f, targetPoints[i].z);
+                }
+
+                interiors.ringPoints = tempList;
+                interiors.targetPoints = hallPoints;
+                interiors.cornerPoints = tempList;
+                interiors.corners = 3;
+                interiors.iterations = iterations + 1;
+                //interiors.enabled = false;
+
+                GetComponent<MeshRenderer>().enabled = false;
+            }
+        }
+        else
+        {
+            Debug.Log("Room has less than 4 ring points");
+            GetComponent<MeshRenderer>().enabled = false;
+            transform.name = "Skipped";
+        }
 
     }
 
@@ -294,9 +317,9 @@ public class Hallways : MonoBehaviour
             Vector2 tempV2 = Vector2.zero;
             if (LineSegmentsIntersection(a0, a1, a2, a3, out tempV2))
             {
-                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = new Vector3(tempV2.x,0f,tempV2.y);
-                c.name = "intersect b4 distance check";
+             //    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+              //  c.transform.position = new Vector3(tempV2.x,0f,tempV2.y);
+             //   c.name = "intersect b4 distance check";
 
              //   Debug.DrawLine(p0, p1, Color.red);
              //   Debug.DrawLine(p2, p3, Color.cyan);
@@ -308,9 +331,9 @@ public class Hallways : MonoBehaviour
                     intersectV2 = tempV2;
                    // distance = tempD;
 
-                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = new Vector3(tempV2.x, 0f, tempV2.y);
-                    c.name = "intersect after distance check";
+                   // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   // c.transform.position = new Vector3(tempV2.x, 0f, tempV2.y);
+                   // c.name = "intersect after distance check";
 
                     foundTemp = true;
 
@@ -351,15 +374,15 @@ public class Hallways : MonoBehaviour
        // newPoints = newPoints.Distinct().ToList();//.linq
 
         Vector3 avg = Vector3.zero;
-        bool doCubes = true;
+        bool doCubes = false;
 
         for (int a = 0; a < newPoints.Count; a++)
         {
             if (doCubes)
             {
-               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-              //  c.transform.position = newPoints[a];
-              //  c.name = "np";
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = newPoints[a];
+                c.name = "np";
             }
 
             //flatten - working on THIS
