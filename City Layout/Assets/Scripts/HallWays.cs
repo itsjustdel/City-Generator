@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-//using System.Linq;
+using System.Linq;
 
 public class Hallways : MonoBehaviour
 {
@@ -10,16 +10,24 @@ public class Hallways : MonoBehaviour
     public bool reCentreMesh = false;
     public List<Vector3> interiorsRingPoints = new List<Vector3>();
     public List<Vector3> targetPoints = new List<Vector3>();
-
+    public List<Vector3> tempList = new List<Vector3>();
     List<Vector3> ringPoints = new List<Vector3>();
+
+    public List<Vector3> apartmentDoorPositions = new List<Vector3>();
     public float hallSize = 1f;
+
+    public float wallDepth = 0.3f;
+    public float doorDepth = 0.2f;
+
     // Start is called before the first frame update
+    TraditionalSkyscraper tS;
     void Start()
     {
-
+        if(iterations ==1)
+            tS = transform.parent.parent.parent.parent.parent.GetComponent<TraditionalSkyscraper>();
         //make local  - we can make changes to this without overwriting original info
         ringPoints = new List<Vector3>(interiorsRingPoints);
-
+       
         if (reCentreMesh == false)
         {
             //we need to puit the points back in world space to work out
@@ -57,15 +65,21 @@ public class Hallways : MonoBehaviour
     void AlterMeshSimple()
     {
         
-        List<Vector3> tempList = new List<Vector3>();
+         tempList = new List<Vector3>();
 
         int safety = 0;
-        GameObject c;
+       // GameObject c;
        
 
         List<Vector3> blockList = new List<Vector3>();
         //gather hall edges and centre points(where it meets the edge and internal halls)
         List<Vector3> hallPoints = new List<Vector3>();
+        //where the positions came from -needed for door positions
+        List<Vector3> originalPositions = new List<Vector3>();
+        //exteriors
+        List<Vector3> exteriors = new List<Vector3>();
+        
+        
         //make space for halls by pulling in vertices
         for (int i = 0; i < ringPoints.Count; i++)
         {
@@ -98,13 +112,29 @@ public class Hallways : MonoBehaviour
             if (ringPoints[prev].y == 0f && ringPoints[i].y == 0f && ringPoints[next].y == 0f)
             {
                 //add this first
-                if(!blockList.Contains(ringPoints[i]))
+                if (!blockList.Contains(ringPoints[i]))
+                {
                     tempList.Add(ringPoints[i]);
+
+                    //find door positions for exterior
+//                    if (!IsDoorExterior(i))
+                    {
+                        //                      GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        //                    c.transform.position = ringPoints[i];
+                        //                  c.name = "Interior 0";
+
+                        originalPositions.Add(ringPoints[i]);
+                    }
+
+                    if (IsDoorExterior(i))
+                        exteriors.Add(ringPoints[i]);
+                    
+                }
             }
             else if (ringPoints[prev].y == 0f && ringPoints[i].y > 0f && ringPoints[next].y == 0f)
             {
                 
-
+                /*
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[prev];
                 c.name = "non,hall , non";
@@ -116,19 +146,39 @@ public class Hallways : MonoBehaviour
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[next];
                 c.name = next.ToString();
+                */
 
                 Vector3 miterDir = MiterDirection(ringPoints[prev], ringPoints[i], ringPoints[next],hallSize);
                 tempList.Add(ringPoints[i] - miterDir);
+                
 
-                //add halls
+                //add halls //iteration?
                 hallPoints.Add(ringPoints[prev]);
                 hallPoints.Add(ringPoints[i]);
                 hallPoints.Add(ringPoints[next]);
+
+                //find door positions for exterior
+                if (!IsDoorExterior(i))
+                {
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = ringPoints[i] - miterDir;
+                    c.name = "Interior 1";
+
+                    originalPositions.Add(ringPoints[i]);
+                }
+                else
+                {
+                    exteriors.Add(ringPoints[i]);
+                    originalPositions.Add(ringPoints[i]);
+                }
 
 
             }
             else if (ringPoints[prev].y > 0f && ringPoints[i].y == 0f && ringPoints[next].y == 0f)
             {
+
+
+
                 //find interect on outer ring/target points
                 Vector3 foundIntersect = Vector3.zero;
 
@@ -138,12 +188,54 @@ public class Hallways : MonoBehaviour
                 {
                     tempList.Add(foundIntersect);
                     i = indexFoundAt;
+
+                    //find door positions for exterior
+                    if (!IsDoorExterior(i))
+                    {
+                        if (iterations == 1)
+                        {
+                            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = foundIntersect;
+                            c.name = "Interior 2";
+
+                            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = ringPoints[i];
+                            c.name = "ring point i";
+
+                            if (iterations == 1)//no outside atm
+                            {
+                                //only if door is in this position!
+                                if (GetComponentInParent<Interiors>().apartmentDoorPosition == ringPoints[i])
+                                {
+                                    //only need frame, other intersection will make the door (on other floor plan)
+                                    //  ApartmentDoorFrame(ringPoints[i], foundIntersect, (ringPoints[prev] - ringPoints[i]).normalized,false);
+                                }
+                                else
+                                {
+                                    //  Debug.Log("Wee wall");
+                                    //   Wall(ringPoints[i], foundIntersect, (ringPoints[prev] - ringPoints[i]).normalized,false);
+                                }
+                            }
+
+
+
+                        }
+
+
+                        originalPositions.Add(ringPoints[i]);
+                    }
+                    else
+                    {
+                        exteriors.Add(foundIntersect);//maybe found intersect?like below
+                        originalPositions.Add(ringPoints[i]);
+                    }
+
                 }
                 
             }
             else if (ringPoints[prev].y == 0f && ringPoints[i].y == 0f && ringPoints[next].y > 0f)
             {
-
+                /*
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[prev];
                 c.name = "non,non  ,hall";
@@ -155,7 +247,7 @@ public class Hallways : MonoBehaviour
                 c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 c.transform.position = ringPoints[next];
                 c.name = next.ToString();
-
+                */
                 //find interect on outer ring/target points
 
                 if (tempList.Count == 0)
@@ -176,8 +268,42 @@ public class Hallways : MonoBehaviour
                 {
                     tempList.Add(foundIntersect);
 
-                  //  i = indexFoundAt;
+                    if (!IsDoorExterior(i))
+                    {
+                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = foundIntersect;
+                       c.name = "Interior 3";
+
+                        originalPositions.Add(ringPoints[i]);
+
+                        if (iterations == 1)//no outside atm
+                        {
+                            //only build one door per apartment, save on parent so other hallways scripts can access easily
+                            if (!GetComponentInParent<Interiors>().apartmentDoorBuilt)
+                            {
+                                
+                                //ApartmentDoor(i, foundIntersect);
+                               // ApartmentDoorFrame(ringPoints[i], foundIntersect, (ringPoints[next] - ringPoints[i]).normalized, true);
+
+                                //GetComponentInParent<Interiors>().apartmentDoorBuilt = true;
+                                //GetComponentInParent<Interiors>().apartmentDoorPosition = ringPoints[i];
+                            }
+                            else
+                            {
+                                //  Debug.Log("Wee wall");
+                                //Wall(ringPoints[i], foundIntersect,(ringPoints[next] - ringPoints[i]).normalized,true);
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        exteriors.Add(foundIntersect);//not tested
+                        originalPositions.Add(ringPoints[i]);
+                    }
                 }
+
+
             }
             else if (ringPoints[prev].y == 0f && ringPoints[i].y > 0f && ringPoints[next].y > 0f)
             {
@@ -202,13 +328,16 @@ public class Hallways : MonoBehaviour
         {
             if(blockList.Contains( tempList[i]))
             {
+
+                originalPositions.Remove(tempList[i]);//?
+                exteriors.Remove(tempList[i]);//?
                 tempList.RemoveAt(i);
             }
         }
 
         if (tempList.Count > 3)
         {
-            GameObject cell = Cell(tempList);
+            GameObject cell = Cell(tempList, originalPositions, exteriors);
 
 
             //split up again?
@@ -230,7 +359,7 @@ public class Hallways : MonoBehaviour
                 interiors.cornerPoints = tempList;
                 interiors.corners = 3;
                 interiors.iterations = iterations + 1;
-                //interiors.enabled = false;
+               // interiors.enabled = false;
 
                 GetComponent<MeshRenderer>().enabled = false;
             }
@@ -244,6 +373,56 @@ public class Hallways : MonoBehaviour
 
     }
 
+    bool IsDoorExterior(int i)
+    {
+        //two potential doors here, previous point, and next. Check to see if these points are between ring points for the whole floor
+        //3 parents up if 2nd iteration
+        GameObject c = null;
+        bool exterior = false;
+        if (iterations == 1)
+        {
+            List<Vector3> parentsRingPoints = transform.parent.parent.parent.GetComponent<Interiors>().ringPoints;
+            parentsRingPoints = parentsRingPoints.Distinct().ToList();
+
+           
+            for (int j = 0; j < parentsRingPoints.Count; j++)
+            {               
+                int parentNext = j + 1;
+                if (parentNext > parentsRingPoints.Count - 1)
+                    parentNext -= parentsRingPoints.Count;
+
+                //check to see if previous point or next point is between parent ring points
+               // float d0 = Vector3.Distance(parentsRingPoints[j], parentsRingPoints[parentNext]);              
+               // float d1 = Vector3.Distance(ringPoints[next], parentsRingPoints[j]);
+               // float d2 = Vector3.Distance(ringPoints[next], parentsRingPoints[parentNext]);
+
+                if(DistanceLineSegmentPoint(parentsRingPoints[j],parentsRingPoints[parentNext],ringPoints[i]) < 0.01f)
+                {
+
+
+                    exterior = true;
+                }
+            }
+        }
+
+        return exterior;
+    }
+
+    // Distance to point (p) from line segment (end points a b)
+    float DistanceLineSegmentPoint(Vector3 a, Vector3 b, Vector3 p)
+    {
+        //https://forum.unity.com/threads/how-to-check-a-vector3-position-is-between-two-other-vector3-along-a-line.461474/
+
+        // If a == b line segment is a point and will cause a divide by zero in the line segment test.
+        // Instead return distance from a
+        if (a == b)
+            return Vector3.Distance(a, p);
+
+        // Line segment to point distance equation
+        Vector3 ba = b - a;
+        Vector3 pa = a - p;
+        return (pa - ba * (Vector3.Dot(pa, ba) / Vector3.Dot(ba, ba))).magnitude;
+    }
 
     static bool IntersectNext(out Vector3 foundIntersect,out int indexFoundAt, List<Vector3> ringPoints, ref List<Vector3> blockList,  float hallSize, int prev, int i, int next,int targetStart, bool flipDir, bool onlyLookForHalls,bool addToBlock)
     {
@@ -298,9 +477,9 @@ public class Hallways : MonoBehaviour
 
             //if(tempList.Contains(targetPoints[aa]))
            // {
-                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                c.transform.position = ringPoints[aa];
-                c.name = "to remove";
+             //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+             //   c.transform.position = ringPoints[aa];
+              //  c.name = "to remove";
 
             if(addToBlock)
                 blockList.Add(ringPoints[aa]);
@@ -366,7 +545,7 @@ public class Hallways : MonoBehaviour
         return foundTemp;
     }
   
-    public GameObject Cell(List<Vector3> tempList)
+    public GameObject Cell(List<Vector3> tempList, List<Vector3> originalPositions, List<Vector3> exteriors)
     {
         List<Vector3> newPoints = new List<Vector3>(tempList);
 
@@ -388,7 +567,7 @@ public class Hallways : MonoBehaviour
             //flatten - working on THIS
             Vector3 flat = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
             avg += flat;// newPoints[a];
-                        // newPoints[a] = flat;
+            //newPoints[a] = flat;//testing is ok
         }
         avg /= newPoints.Count;
 
@@ -433,26 +612,125 @@ public class Hallways : MonoBehaviour
         Mesh mesh = new Mesh();
         mesh.vertices = newPoints.ToArray();
         mesh.triangles = trianglesL.ToArray();
-
-        //mesh = ExtrudeCell.Extrude(mesh, 3f, 1f, true);
-
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
-
         mf.mesh = mesh;
 
 
-
-
-
-
+        InteriorWalls iW = roomFloor.AddComponent<InteriorWalls>();
+        iW.tempList= tempList;
+        iW.apartmentDoorPositions = apartmentDoorPositions;
+        iW.tS = tS;
+        iW.originalPositions = originalPositions;
+        iW.exteriors = exteriors;
+        //apartment walls and door?
+      
+        //interior rooom assets?
+        if (iterations == 1)
+        {
+            iW.room = true;
+        }
 
         return roomFloor;
-
     }
 
+    GameObject ApartmentDoorA(int i,Vector3 foundIntersect)
+    {
+        //apartment front door
+        float doorWidth = GetComponentInParent<Interiors>().doorWidth;
+        TraditionalSkyscraper tS = transform.parent.parent.parent.parent.parent.GetComponent<TraditionalSkyscraper>();
+        float doorHeight = (tS.floorHeight - (tS.spacerHeight*2)) * .66f;//parent * 5? a bit mental, could pass TS down through the scripts 
+
+
+        PaletteInfo pI = transform.parent.parent.parent.parent.parent.GetComponent<PaletteInfo>();
+        Material material = null;
+        if (pI.palette != null)//protexts for hot loading
+        {
+            if (pI.palette.Count > 0)
+            {
+                material = pI.palette[0].material;
+            }
+        }
+        else
+            material = Resources.Load("Black") as Material;
+
+        //mesh and G object
+        GameObject door = InteriorAssets.ApartmentDoor(transform, ringPoints[i], foundIntersect, doorWidth, doorHeight,doorDepth, material);
+        door.transform.position = new Vector3(ringPoints[i].x, transform.position.y, ringPoints[i].z);
+        door.transform.position += (doorHeight * .5f) * Vector3.up - door.transform.forward * ((doorDepth * 0.5f) + (wallDepth - doorDepth));//moving back to align hinges with inside wall
+        door.transform.parent = transform;
+        //make the frame for this side too
+
+
+        return door;
+    }
+
+    GameObject Wall(Vector3 a, Vector3 b,Vector3 extrudeDir,bool flipDir)
+    {
+        //need to edge slide//****
+
+        
+
+
+        float floorHeight = tS.floorHeight * (1f - tS.spacerHeight * 2);
+
+        GameObject wall = InteriorAssets.BookendWall(a,b,extrudeDir,wallDepth,floorHeight,flipDir);
+        wall.name = "Wall (Hall bookend)";
+       
+        PaletteInfo pI = tS.GetComponent<PaletteInfo>();
+        if (pI.palette != null)//protexts for hot loading
+        {
+            if (pI.palette.Count > 0)
+            {
+                Material m = pI.palette[0].tints[0];
+                wall.AddComponent<MeshRenderer>().sharedMaterial = m;  //match to storey outside?
+            }
+        }
+        else
+            wall.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Grey") as Material;
+
+
+        //recentre mesh? // just adjust y atm
+        wall.transform.position = new Vector3(wall.transform.position.x, transform.position.y, wall.transform.position.z);
+        wall.transform.parent = transform;
+
+
+        return wall;
+    }
+
+    GameObject ApartmentDoorFrame(Vector3 centre,Vector3 intersect,Vector3 extrudeDir, bool flipDir)
+    {
+        TraditionalSkyscraper tS = transform.parent.parent.parent.parent.parent.GetComponent<TraditionalSkyscraper>();//parent * 5? a bit mental, could pass TS down through the scripts         
+        float doorHeight = (tS.floorHeight - (tS.spacerHeight * 2)) * .66f;//parent * 5? a bit mental, could pass TS down through the scripts 
+        float doorWidth = GetComponentInParent<Interiors>().doorWidth;
+        //float doorDepth = .3f;        
+        
+
+        GameObject wall = InteriorAssets.ApartmentDoorFrame(centre, intersect,extrudeDir, doorHeight, doorWidth, wallDepth, tS,flipDir);
+
+        PaletteInfo pI = tS.GetComponent<PaletteInfo>();
+        if (pI.palette != null)//protexts for hot loading
+        {
+            if (pI.palette.Count > 0)
+            {
+                Material m = pI.palette[0].tints[0];
+                wall.AddComponent<MeshRenderer>().sharedMaterial = m;  //match to storey outside?
+            }
+        }
+        else
+            wall.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Grey") as Material;
+
+        //recentre mesh? // just adjust y atm
+        wall.transform.position = new Vector3(wall.transform.position.x, transform.position.y, wall.transform.position.z);
+        wall.transform.parent = transform;
+
+        return wall;
+    }
+
+    
+
     //helper functions
-    static Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2, float borderSize)
+    public static Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2, float borderSize)
     {
         //flatten miters in this case
         p0 = new Vector3(p0.x, 0f, p0.z);
@@ -481,7 +759,7 @@ public class Hallways : MonoBehaviour
         //  Debug.DrawLine(p0, p1, Color.yellow);
         //   Debug.DrawLine(p2, p1, Color.yellow);
         // if(draw)
-       // Debug.DrawLine(p1, p1 - miterDirection, Color.magenta);
+        Debug.DrawLine(p1, p1 - miterDirection, Color.yellow);
         //Debug.Break();
         //GetComponent<MeshRenderer>().enabled = true;
         /*

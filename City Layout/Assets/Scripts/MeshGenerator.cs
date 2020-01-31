@@ -203,6 +203,13 @@ public class MeshGenerator : MonoBehaviour {
                 dualGraph.ComputeForAllSortedCells();
                 // dualGraph.ComputeForAllCells();
 
+                for (int i = 0; i < points.Length; i++)
+                {
+                   // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.transform.position = points[i]+transform.position;
+                  //  c.name = "points " + i.ToString();
+                }
+
                 dualGraph.PrepareCellsForMesh();
             }
             
@@ -323,8 +330,10 @@ public class MeshGenerator : MonoBehaviour {
 
 
              RemoveSmallEdges();
-            //ReMesh(true);//NEED if not removinfg small edges - small edges does this at bottom of method
 
+             ReMesh(true);//NEED - checks for clockwise
+            
+            return;
 
             //create a list of edges for each polygon and save on Adjacent Edges script added to each cell
             Edges();
@@ -413,7 +422,6 @@ public class MeshGenerator : MonoBehaviour {
         for (int i = cells.Count-1; i >= 0; i--)// can be removing
         {
 
-
             if (interior)
             {
               //  Debug.Log("before = " + cells[i].GetComponent<MeshFilter>().mesh.vertexCount);
@@ -423,9 +431,6 @@ public class MeshGenerator : MonoBehaviour {
                 cells[i].GetComponent<MeshRenderer>().enabled = true;
 
             Vector3[] vertices = cells[i].GetComponent<MeshFilter>().mesh.vertices;
-
-
-
 
             List<Vector3> newVertices = new List<Vector3>();
             
@@ -456,8 +461,57 @@ public class MeshGenerator : MonoBehaviour {
                 }
             }
 
+            //make sure vertices run in a clockwise order
+            int antiClockwise = 0;
+            for (int j = 2; j < newVertices.Count; j++)
+            {
+                Vector3 fwd = newVertices[j] - newVertices[j - 1];
+                Vector3 targetDir =  newVertices[0] - newVertices[j - 1];//to centre
+                if (AngleDir(fwd, targetDir, Vector3.up) < 0f)
+                {
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.name = "clock " + i.ToString();
+                    c.transform.position = newVertices[j];
+
+                    Debug.DrawLine(newVertices[j], newVertices[j - 1]);
+
+                    antiClockwise++;
+                    Debug.Break();
+                }
+                else
+                    //cover for complex shapes? - not tested so far
+                    antiClockwise--;
+            }
+
+            if (antiClockwise > 0)
+            {
+                //GameObject   c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //c.name = "change" + i.ToString();
+               // c.transform.position = newVertices[0];
+
+                for (int j = 0; j < newVertices.Count; j++)
+                {
+                   // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                   // c.name = "old" + i.ToString();
+                   // c.transform.position = newVertices[j];
+                }
+
+                //reverse vertices (except centre)
+                newVertices.Reverse();
+                newVertices.Insert(0, newVertices[newVertices.Count - 1]);
+                newVertices.RemoveAt(newVertices.Count - 1);
+
+
+                for (int j = 0; j < newVertices.Count; j++)
+                {
+                //    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //    c.name = "new" + i.ToString();
+                //    c.transform.position = newVertices[j];
+                }
+            }
+
             //check we can still make a mesh
-            if(newVertices.Count <=2)
+            if (newVertices.Count <=2)
             {
              //   Destroy(cells[i]);
              //   cells.RemoveAt(i);
@@ -513,6 +567,22 @@ public class MeshGenerator : MonoBehaviour {
 
        
     }
+
+    //returns -1 when to the left, 1 to the right, and 0 for forward/backward
+    public static float AngleDir(Vector3 fwd, Vector3 targetDir, Vector3 up)
+    {
+
+    Vector3 perp = Vector3.Cross(fwd, targetDir);
+    float dir = Vector3.Dot(perp, up);
+   
+    if (dir > 0.0) {
+        return 1.0f;
+    } else if (dir< 0.0) {
+        return -1.0f;
+    } else {
+        return 0.0f;
+    }
+}
 
     void RemoveSmallEdges()
     {
@@ -679,9 +749,9 @@ public class MeshGenerator : MonoBehaviour {
         }
 
         //create meshes again
-        ReMesh(true);
+       // ReMesh(true);
         //and work out edges for each cell again now we have changed them
-        Edges();
+      //  Edges();
 
         for (int a = 0; a < cells.Count; a++)
         {

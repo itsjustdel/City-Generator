@@ -34,6 +34,7 @@ public class ExtrudeCell : MonoBehaviour {
 
         if (scale < 1f) 
             ScaleToMiter();
+
         //ScaleToCenter();
         GetComponent<MeshRenderer>().enabled = false;
 
@@ -64,8 +65,11 @@ public class ExtrudeCell : MonoBehaviour {
             
             pavement.Start();
             //animate new curved edge cell
-            
-            StartCoroutine(ScaleWithTime(pavement.pavement.transform, totalTimeForAnimation));
+
+            if (doExtrudeAnimation)
+                StartCoroutine(ScaleWithTime(pavement.pavement.transform, totalTimeForAnimation));
+            else
+                GameObject.FindGameObjectWithTag("Code").GetComponent<BuildControl>().readyToBuild = true;
         }
 
         if(showTints)
@@ -86,7 +90,8 @@ public class ExtrudeCell : MonoBehaviour {
     }
     public IEnumerator ScaleWithTime(Transform extrudedCell, float timeToMove)
     {
-      //  Debug.Log("here");
+     
+        //  Debug.Log("here");
         var t = 0f;
         while (t < 1)
         {
@@ -95,9 +100,12 @@ public class ExtrudeCell : MonoBehaviour {
 
             Vector3 targetScale = Vector3.one;
             extrudedCell.localScale = Vector3.Lerp(Vector3.zero, targetScale, eased);
+            
             yield return null;
         }
-        
+
+        extrudedCell.localScale = Vector3.one;
+
         //once it gets here, set true
         finishedAnimating = true;
         //let skyscraper script we already re aligned thisc ell
@@ -108,6 +116,8 @@ public class ExtrudeCell : MonoBehaviour {
 
         //wait a little before building
         yield return new WaitForSeconds(0.5f);
+        
+
         GameObject.FindGameObjectWithTag("Code").GetComponent<BuildControl>().readyToBuild = true;
 
         if (showTints)

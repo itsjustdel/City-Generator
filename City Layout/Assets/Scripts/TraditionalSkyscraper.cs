@@ -202,7 +202,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         //height = 
         Height();
         floorHeight = Random.Range(2f, 3.5f);
-        spacerHeight = Random.Range(0f, 0.2f);
+        spacerHeight = Random.Range(0.01f, 0.2f);//needs to be a little to stop Z fighting
         //choose a side to sculpt with more random detail
         //if this number is over vertices length, it won't sculpt a side , just keep everything more uniform
         Mesh mesh = GetComponent<MeshFilter>().mesh;
@@ -694,7 +694,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     yield return new WaitForFixedUpdate();
                 }
             }
-
+            storey.transform.localScale = Vector3.one;
 
             //interiors
             //drop some mesh data to help later when planning interior
@@ -704,7 +704,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             interiors.cornerPoints = cornerPoints;
             interiors.corners = ringCornerPoints.Count;
            // interiors.underSide = floorAndCeiling[1];//second to be made in FloorAndCeiling method
-            interiors.enabled = false;
+            //interiors.enabled = false;
 
             yield break;
         }
@@ -1792,6 +1792,9 @@ public class TraditionalSkyscraper : MonoBehaviour {
         GameObject roof = TriangulateRing(ringPoints, flip);
         roof.transform.parent = parent.transform;
         roof.name = "Roof";
+
+        roof.GetComponent<MeshRenderer>().enabled = false;
+
         //can do underside of floor too            
         flip = true; 
         GameObject underSide = TriangulateRing(ringPoints, flip);
@@ -1824,9 +1827,10 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         //re align roof - height at next floor height
         ReAlign(floorAndCeiling[0], height);
-        floorAndCeiling[0].transform.position += Vector3.up * floorHeight;
+        floorAndCeiling[0].transform.position += Vector3.up * (floorHeight* (1f - spacerHeight));// - spacerHeight*2);
         //re align underside
         ReAlign(floorAndCeiling[1], height);
+        floorAndCeiling[1].transform.position += Vector3.up * (floorHeight* spacerHeight);
     }
 
     void ReAlign(GameObject storey,float height)

@@ -14,6 +14,8 @@ public class Interiors : MonoBehaviour
     public List<Vector3> cornerPoints = new List<Vector3>();
     //public GameObject underSide;
 
+
+
     
     public int corners = 0;
     public float doorWidth = 1f;
@@ -23,6 +25,12 @@ public class Interiors : MonoBehaviour
     public bool fullReset;
     public bool showRingPoints = false;
     GameObject interiorObj;
+
+    public bool apartmentDoorBuilt = false;
+    public Vector3 apartmentDoorPosition;
+    //as rooms build this will populate, once there are 2 positions, interior walls will build a door
+    public List<Vector3> apartmentDoorCornersA = new List<Vector3>();
+    public List<Vector3> apartmentDoorCornersB = new List<Vector3>();
     int frames = 0;
 
     //used by children components to build halls
@@ -107,7 +115,6 @@ public class Interiors : MonoBehaviour
         //?work needs done for this
         //add random
        // RaycastHit hit;
-        float limit = (GetComponent<MeshRenderer>().bounds.extents.x + GetComponent<MeshRenderer>().bounds.extents.z)*.5f;
         
 
         
@@ -117,10 +124,12 @@ public class Interiors : MonoBehaviour
         Vector3 zeroGameObj = new Vector3(gameObject.transform.position.x, 0f, gameObject.transform.position.z);
         int count = 0;
 
-       // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-      //  c.transform.position = zeroGameObj;
-      //  c.name = "zero g";
+        // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        //  c.transform.position = zeroGameObj;
+        //  c.name = "zero g";
 
+
+        /* random
         for (int a = 0; a < 100; a++)
         {
             //create a point with random angle from centre with a random distance(capped at bounds distance)
@@ -145,9 +154,9 @@ public class Interiors : MonoBehaviour
                     //zero they before adding
                     randomV3 = new Vector3(randomV3.x, 0f, randomV3.z);
 
-                  //  c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                  //  c.transform.position = randomV3 - zeroGameObj;
-                 //   c.name = "tard point from tri";
+                   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = randomV3 - zeroGameObj + transform.position;
+                    c.name = "tard point from tri";
 
                     mg.yardPoints.Add(randomV3 - zeroGameObj);
 
@@ -168,10 +177,68 @@ public class Interiors : MonoBehaviour
                 Debug.Log("No points inside floorplan for interior - hit safety");
             }
         }
+        */
+
+        //might need to change if we want more than a cluster of rooms(double halls in merged cell e.g)
+        Vector3 boundsCentre = GetComponent<MeshRenderer>().bounds.center;
+        boundsCentre = new Vector3(boundsCentre.x, 0f, boundsCentre.z);
+
+        Vector3 avg = Vector3.zero;
+        for (int i = 0; i < ringPoints.Count; i++)
+        {
+            
+
+            avg +=new Vector3( ringPoints[i].x,0f,ringPoints[i].z);
+        }
+
+        avg /= ringPoints.Count;
+
+        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = avg;// + transform.position - boundsCentre;
+        c.name = "ring center";
+
+        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = boundsCentre;// + transform.position - boundsCentre;
+        c.name = "bounds center";
+
+
+
+        //spin round this
+        int start = Random.Range(0, 360 / cap);
+        for (int i = start; i < 360 + start; i+=360/cap)
+        {
+            Vector3 p0 = Quaternion.Euler(0,i,0)* Vector3.right;
+            
+
+            
+
+            
+
+            Vector3 p1 =p0 * 100;
+           // p1 += avg - boundsCentre;
+            //mg.yardPoints.Add(p1);
+
+            Vector3 p2 = p0 *101;
+           // p2 += avg - boundsCentre;
+            //mg.yardPoints.Add(p2);
+
+            p0 += boundsCentre - avg;
+            p1 += boundsCentre - avg;
+            p2 += boundsCentre - avg;
+
+            mg.yardPoints.Add(p0);
+            mg.yardPoints.Add(p1);
+            mg.yardPoints.Add(p2);
+
+            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = p0 + transform.position;// + avg - boundsCentre;
+            c.name = "voronoi input";
+        }
         
 
         //add border points
 
+        /*
         List<Vector3> ringPoints = cornerPoints;
         //add halfway to ringpoints
         List<Vector3> ringPointsHalfway = new List<Vector3>();
@@ -185,6 +252,9 @@ public class Interiors : MonoBehaviour
         ringPointsHalfway.Add(Vector3.Lerp(ringPoints[0], ringPoints[ringPoints.Count - 1], 0.5f));
 
         ringPoints = new List<Vector3>(ringPointsHalfway);
+
+        //float limit = 2;// (GetComponent<MeshRenderer>().bounds.extents.x + GetComponent<MeshRenderer>().bounds.extents.z) * .5f;
+        
         for (int i = 0; i < ringPoints.Count; i++)
         {
             //0 that y co-ord
@@ -207,7 +277,7 @@ public class Interiors : MonoBehaviour
             //*** try and fit edge of voronoi pattern to edge of floor
 
 
-        }
+        }*/
 
 
         for (int i = 0; i < 360; i+= 30)
@@ -231,7 +301,7 @@ public class Interiors : MonoBehaviour
 
         mg.minEdgeSize = hallWidth;
         mg.volume = Vector3.one * 1000;
-        mg.lloydIterations = 3;//relax cells
+        mg.lloydIterations = 1;//relax cells
         mg.interior = true;
         mg.fillWithPoints = true; ;// mg.fillWithRandom = true;
         mg.weldCells = false;
@@ -279,8 +349,8 @@ public class Interiors : MonoBehaviour
             for (int k = 1; k < vertices.Length; k++)
             {
                 int next = k + 1;
-                if (next >= vertices.Length)
-                    next -= vertices.Length - 1; //was 1
+                if (next > vertices.Length - 1)
+                    next = 1;// vertices.Length - 1; //was 1
 
 
 
@@ -288,7 +358,7 @@ public class Interiors : MonoBehaviour
                 Vector2 p1 = new Vector2(vertices[next].x, vertices[next].z);
 
 
-                Debug.DrawLine(vertices[k], vertices[next], Color.white);
+               // Debug.DrawLine(vertices[k], vertices[next], Color.white);
 
                 /*
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -362,12 +432,14 @@ public class Interiors : MonoBehaviour
 
     void MakeCells(List<GameObject> cellsToSnip, List<CellInfo> cellInfos)
     {
-        bool doCubes = false;//debug
+        bool doCubes = true;//debug
 
    
         for (int i = 0; i < cellInfos.Count; i++)
         {
-            
+            //we need to keep track of possible door positions
+            List<Vector3> doorPositions = new List<Vector3>();
+
             List<int[]> edges = cellInfos[i].edges;
             //List<List<int>> intersectIndexesForCell = cellInfos[i].intersectIndexesForEdges;
             //List<List<Vector3>> intersectsForCell = cellInfos[i].intersectsForEdges;
@@ -382,7 +454,7 @@ public class Interiors : MonoBehaviour
                 List<Vector3> intersects = cellInfos[i].intersectsForEdges[j];
                 List<int> intersectIndexes = cellInfos[i].intersectIndexesForEdges[j];
 
-                //Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.white);
+                Debug.DrawLine(vertices[edge[0]], vertices[edge[1]], Color.white);
 
                 if (doCubes)
                 {
@@ -419,6 +491,7 @@ public class Interiors : MonoBehaviour
                     c.transform.position = t2;
                     c.name = "t2";
                     */
+                    //check first edge
                     Vector2 q = new Vector3(vertices[edge[0]].x, vertices[edge[0]].z); //possible y co-prd probs on higher floors? but vector 2?
                     Vector2 q0 = new Vector2(t0.x, t0.z);
                     Vector2 q1 = new Vector2(t1.x, t1.z);
@@ -428,6 +501,16 @@ public class Interiors : MonoBehaviour
                     {
                         inside = true;
                         break;
+                    }
+
+
+                    //HERE, LOOK FOR FLOOR WITH 2 CYAN ONLY WILL NOT WORK CORRECTLY
+                    //what if edge only is inside with 2nd point? - do we need inside first and inside second checks?
+                    q = new Vector3(vertices[edge[1]].x, vertices[edge[1]].z);
+                    //if (PointInTriangle(q, q0, q1, q2))
+                    {
+                        //inside = true;
+                        //break;
                     }
                 }
 
@@ -536,7 +619,7 @@ public class Interiors : MonoBehaviour
 
                         if (intersects.Count == 1)
                         {
-                            Debug.DrawLine(vertices[edge[1]], intersects[0], Color.magenta);//add from intersection
+                           // Debug.DrawLine(vertices[edge[1]], intersects[0], Color.magenta);//add from intersection
                        
 
                             //add 0y
@@ -547,15 +630,26 @@ public class Interiors : MonoBehaviour
                             Vector3 y1 = new Vector3(vertices[edge[1]].x, 1f, vertices[edge[1]].z);
                             newPoints.Add(y1);
 
+                            //check if this point is on the exterior ring
                             
-                            //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                            //c.transform.position = intersects[0];
-                            //c.name = "intersect 0";
+                            if (!IsDoorExterior(intersects[0]))
+                            {
+                                doorPositions.Add(intersects[0]);
+                               
+                               // GameObject door = ApartmentDoor(intersects[0], ringPoints[intersectIndexes[0]]);
 
-                           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                           // c.transform.position = y1;
-                           // c.name = "edge 1";
+                                
+                            }
+
+                            /*
+                            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            c.transform.position = intersects[0];
+                            c.name = "intersect 0 " + i.ToString(); ;
                             
+                              c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                             c.transform.position = y1;
+                             c.name = "edge 1 " + i.ToString(); ;
+                             */
                         }
                     }
                 }
@@ -708,23 +802,15 @@ public class Interiors : MonoBehaviour
                     Hallways hallways = area.AddComponent<Hallways>();
                     hallways.interiorsRingPoints = newPoints;
                     hallways.targetPoints = targetPoints;
-                   // hallways.enabled = false;
+                    hallways.enabled = false;
                     hallways.reCentreMesh = true;
                     hallways.iterations = iterations;
-
+                    hallways.apartmentDoorPositions = doorPositions;
                     GetComponent<MeshRenderer>().enabled = false;
 
-
-                    //split up again?
-                    //  Interiors nextInteriors = area.AddComponent<Interiors>();
-                    //  newPoints.Add(newPoints[0]);
-                    //  nextInteriors.ringPoints = newPoints;
-                    //  nextInteriors.cornerPoints = new List<Vector3>( vertices );
-
-                    //    nextInteriors.corners = vertices.Length;//cells to snip length? testing
-                    //  nextInteriors.enabled = false;
-                    //gameObject.GetComponent<MeshRenderer>().enabled = false;
-                    //areas.Add(area);
+                    //Apartment door needs done after hallways because miters are different from just hall width
+                    //use door positions list to cross reference intersects in hallways scripts to find 
+                    //what to do if two?
                 }
             }
         }
@@ -732,7 +818,40 @@ public class Interiors : MonoBehaviour
 
     }
 
-   
+    
+
+    
+
+
+    bool IsDoorExterior(Vector3 i)
+    {
+        //two potential doors here, previous point, and next. Check to see if these points are between ring points for the whole floor
+        //3 parents up if 2nd iteration
+
+        GameObject c = null;
+        bool exterior = false;
+        if (iterations == 1)
+        {
+            List<Vector3> parentsRingPoints = transform.parent.parent.GetComponent<Interiors>().ringPoints;
+            parentsRingPoints = parentsRingPoints.Distinct().ToList();
+
+
+            for (int j = 0; j < parentsRingPoints.Count; j++)
+            {
+                int parentNext = j + 1;
+                if (parentNext > parentsRingPoints.Count - 1)
+                    parentNext -= parentsRingPoints.Count;
+
+                if (DistanceLineSegmentPoint(parentsRingPoints[j], parentsRingPoints[parentNext], i) < 0.01f)
+                {
+                    exterior = true;
+                }
+            }
+        }
+
+        return exterior;
+    }
+
 
     private void ClearAndReset()
     {
@@ -779,11 +898,15 @@ public class Interiors : MonoBehaviour
             if (found)
                 break;
 
+           // Debug.Log("count = " + ringPoints.Count());
+           // Debug.Log("b4 a = " + a.ToString());
             if (a > ringPoints.Count - 1)
                 a -= ringPoints.Count;
             int next = a + 1;
             if (next > ringPoints.Count - 1)
                 next -= ringPoints.Count ;
+
+           // Debug.Log("after a = " + a.ToString());
 
 
             //check for intersects on all edges matchin ring points
@@ -874,7 +997,7 @@ public class Interiors : MonoBehaviour
             //flatten - working on THIS
             Vector3 flat = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
             avg += flat;// newPoints[a];
-           // newPoints[a] = flat;
+            newPoints[a] = flat;//PUT THIS BACK IN, IS IT OK?!
         }
         avg /= newPoints.Count;
 
@@ -908,7 +1031,7 @@ public class Interiors : MonoBehaviour
         GameObject roomFloor = new GameObject();
         roomFloor.transform.parent = transform;
         roomFloor.transform.position = new Vector3( avg.x,transform.position.y,avg.z);
-        roomFloor.transform.position += Vector3.up * 10;///888test
+       // roomFloor.transform.position += Vector3.up * 10;///888test
         roomFloor.name = "RoomFloor";
         roomFloor.AddComponent<MeshRenderer>().sharedMaterial = Resources.Load("Grey") as Material;
         MeshFilter mf = roomFloor.AddComponent<MeshFilter>();
