@@ -27,14 +27,12 @@ public class Interiors : MonoBehaviour
     GameObject interiorObj;
 
     public bool apartmentDoorBuilt = false;
-    public Vector3 apartmentDoorPosition;
-    //as rooms build this will populate, once there are 2 positions, interior walls will build a door
-    public List<Vector3> apartmentDoorCornersA = new List<Vector3>();
-    public List<Vector3> apartmentDoorCornersB = new List<Vector3>();
+    
     int frames = 0;
 
     //used by children components to build halls
     public Vector3 doorEdgePos = Vector3.zero;
+
 
     private void Start()
     {
@@ -193,13 +191,13 @@ public class Interiors : MonoBehaviour
 
         avg /= ringPoints.Count;
 
-        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        c.transform.position = avg;// + transform.position - boundsCentre;
-        c.name = "ring center";
+      //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+       // c.transform.position = avg;// + transform.position - boundsCentre;
+       // c.name = "ring center";
 
-        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        c.transform.position = boundsCentre;// + transform.position - boundsCentre;
-        c.name = "bounds center";
+       // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+       // c.transform.position = boundsCentre;// + transform.position - boundsCentre;
+      //  c.name = "bounds center";
 
 
 
@@ -230,9 +228,9 @@ public class Interiors : MonoBehaviour
             mg.yardPoints.Add(p1);
             mg.yardPoints.Add(p2);
 
-            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = p0 + transform.position;// + avg - boundsCentre;
-            c.name = "voronoi input";
+            // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //  c.transform.position = p0 + transform.position;// + avg - boundsCentre;
+            //c.name = "voronoi input";
         }
         
 
@@ -432,7 +430,7 @@ public class Interiors : MonoBehaviour
 
     void MakeCells(List<GameObject> cellsToSnip, List<CellInfo> cellInfos)
     {
-        bool doCubes = true;//debug
+        bool doCubes = false;//debug
 
    
         for (int i = 0; i < cellInfos.Count; i++)
@@ -794,7 +792,7 @@ public class Interiors : MonoBehaviour
             if (newPoints.Count > 0)
             {
              
-                if (newPoints.Count > 2)//needs 4
+                if (newPoints.Count > 2)//needs 3
                 {
                     GameObject area = Cell(newPoints);
                     areas.Add(area);
@@ -972,11 +970,6 @@ public class Interiors : MonoBehaviour
         return newPoints;
     }
 
-   
-
- 
-
-
     public GameObject Cell(List<Vector3> newPoints)
     {
 
@@ -997,7 +990,7 @@ public class Interiors : MonoBehaviour
             //flatten - working on THIS
             Vector3 flat = new Vector3(newPoints[a].x, 0f, newPoints[a].z);
             avg += flat;// newPoints[a];
-            newPoints[a] = flat;//PUT THIS BACK IN, IS IT OK?!
+           // newPoints[a] = flat;//PUT THIS BACK IN, IS IT OK?!
         }
         avg /= newPoints.Count;
 

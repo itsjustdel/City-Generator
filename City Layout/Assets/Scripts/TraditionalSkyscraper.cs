@@ -48,7 +48,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
     public float curveAccuracyCorners = 5f;//can do 1 and make hex edge. 5 seems ok, more and we get more vertices- large performance cos(build time)
     private float curveStepSize = .5f;//not looked in to this for opto
 
-    Material[] materials;//materials for main storey
+    public Material[] materials;//materials for main storey
     Material windowFrameMaterial;
 
     public List<BezierSpline> splines = new List<BezierSpline>();
@@ -696,6 +696,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             }
             storey.transform.localScale = Vector3.one;
 
+            
             //interiors
             //drop some mesh data to help later when planning interior
             Interiors interiors = floorAndCeiling[1].AddComponent<Interiors>();
@@ -704,8 +705,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
             interiors.cornerPoints = cornerPoints;
             interiors.corners = ringCornerPoints.Count;
            // interiors.underSide = floorAndCeiling[1];//second to be made in FloorAndCeiling method
-            //interiors.enabled = false;
-
+            interiors.enabled = false;
+            
             yield break;
         }
 
@@ -825,7 +826,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         return cornerPoints;
     }
 
-    List<List<Vector3>> RingEdgePoints(List<Vector3> cornerPoints)
+   public List<List<Vector3>> RingEdgePoints(List<Vector3> cornerPoints)
     {
         //first if we want uniform corner size we need to find out what the smallest corner size and apply it to all corners
         
@@ -946,6 +947,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     c.transform.position = ringPoints[a][b];
                     c.transform.localScale *= 0.1f;
                     Destroy(c, 3);
+                    c.name = "ring edge";
                 }
             }
         }
@@ -953,7 +955,136 @@ public class TraditionalSkyscraper : MonoBehaviour {
         return ringPoints;
     }
 
-    List<List<Vector3>> AddDuplicates(List<List<Vector3>> points)
+    public List<List<Vector3>> RingEdgePoints2(List<Vector3> cornerPoints)
+    {
+        //first if we want uniform corner size we need to find out what the smallest corner size and apply it to all corners
+
+        float cornerSizeForUniform = 0f;
+        if (uniformCorners)
+            cornerSizeForUniform = CornerSize(cornerPoints);
+
+        //now we know corner size, we can start making our edges. A "ring" will comprise of straight edges followed by curved corners.
+        //This ring will be the shape of the floor
+
+
+        List<List<Vector3>> ringPoints = new List<List<Vector3>>();
+
+        for (int j = 0; j < cornerPoints.Count-1; j++)//dont' loop
+        {
+            //clamp list
+            int thisIndex = j;
+            int nextIndex = j + 1;
+            if (nextIndex > cornerPoints.Count - 1)
+                nextIndex = 0;
+
+            Vector3 thisPoint = cornerPoints[thisIndex];
+            Vector3 nextPoint = cornerPoints[nextIndex];
+
+            bool showDebugCubes = false;
+            if (showDebugCubes)
+            {
+
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = thisPoint;
+                c.name = "This";
+
+                c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = nextPoint;
+                c.name = "Next";
+            }
+
+            Vector3 halfPoint = Vector3.Lerp(thisPoint, nextPoint, 0.5f);
+            Vector3 dirToNext = (nextPoint - thisPoint).normalized;
+            Vector3 dirToPrev = (thisPoint - nextPoint).normalized;
+            float distanceToNext = Vector3.Distance(thisPoint, nextPoint);
+
+
+            //work out from middle, then spin and come back. This ensures sides are symmetrical
+
+
+            List<Vector3> thisEdgePoints = new List<Vector3>();
+
+            //using for loop to switch directions
+            for (int k = 0; k < 2; k++)
+            {
+                //using temp ;list because we will reverse them becore entering in to main edge list
+                List<Vector3> tempPoints = new List<Vector3>();
+
+                //if non uniform
+                float tempCornerSize = (distanceToNext * 0.5f) * cornerScaler * .5f;
+                if (tempCornerSize < windowX * 2)
+                    tempCornerSize = windowX * 2;
+
+                //else if uniform, use, corner size function?//***************TODO
+                if (uniformCorners)
+                {
+                    tempCornerSize = cornerSizeForUniform;
+                }
+
+                Vector3 dirToUse = dirToPrev;
+
+                if (k == 1)
+                {
+                    dirToUse = dirToNext;
+                }
+
+                //drop a point for middle of side( this does mean this will be a duplicate point, because the other half of this side uses it too ?? removed below?
+                if (k == 1)
+                {
+                    Vector3 p0 = halfPoint;// + dirToUse * k;
+                    tempPoints.Add(p0);
+                }
+
+                for (float a = windowSpaceX; a < distanceToNext * 0.5f - tempCornerSize; a += windowSpaceX)
+                {
+
+                    Vector3 p = halfPoint + dirToUse * a;
+                    tempPoints.Add(p);
+
+                    a += windowX;
+                    p = halfPoint + dirToUse * a;
+                    tempPoints.Add(p);
+
+                    //add window frame
+                    //double check if this will be the last
+
+                    a += windowSpaceX;
+                    p = halfPoint + dirToUse * a;
+                    tempPoints.Add(p);
+
+                }
+
+                //spin first half
+                if (k == 0)
+                    tempPoints.Reverse();
+
+                //add to this edge points
+                thisEdgePoints.AddRange(tempPoints);
+            }
+            //add to main list
+            ringPoints.Add(thisEdgePoints);
+        }
+
+        bool showCubes = true;
+        if (showCubes)
+        {
+            for (int a = 0; a < ringPoints.Count; a++)
+            {
+                for (int b = 0; b < ringPoints[a].Count; b++)
+                {
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = ringPoints[a][b];
+                    c.transform.localScale *= 0.1f;
+                    Destroy(c, 3);
+                    c.name = "ring edge";
+                }
+            }
+        }
+
+        return ringPoints;
+    }
+
+    public List<List<Vector3>> AddDuplicates(List<List<Vector3>> points)
     {
         //adds duplicate points for mesh so triangles can have unique vertices
         List<List<Vector3>> uniques = new List<List<Vector3>>();
@@ -1187,7 +1318,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         return finalRingVertices;
     }
 
-    List<List<Vector3>> BuildHeightsForFloor(List<Vector3> ringPoints)
+    public List<List<Vector3>> BuildHeightsForFloor(List<Vector3> ringPoints)
     {
         List<List<Vector3>> extrudedRings = new List<List<Vector3>>();
 
@@ -1285,9 +1416,9 @@ public class TraditionalSkyscraper : MonoBehaviour {
         return extrudedRings;
     }
 
-    List<List<int>> TrianglesAndMaterials(out List<List<int>> windowPoints, List<List<Vector3>> extrudedRings, List<List<Vector3>> ringPointsEdge,List<List<Vector3>> ringPointsCorner)
+    public List<List<int>> TrianglesAndMaterials(out List<List<int>> windowPoints, List<List<Vector3>> extrudedRings, List<List<Vector3>> ringPointsEdge,List<List<Vector3>> ringPointsCorner)
     {
-        //we will retunr points for windows with this function too - saves us doing the exact same maths on another function
+        //we will return points for windows with this function too - saves us doing the exact same maths on another function
         windowPoints = new List<List<int>>();
             
         List<List<int>> triangles = new List<List<int>>();
@@ -1467,6 +1598,163 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
     }
 
+    public List<List<int>> TrianglesAndMaterials2(out List<List<int>> windowPoints, List<List<Vector3>> extrudedRings,int totalVertsInRing)
+    {
+        //we will return points for windows with this function too - saves us doing the exact same maths on another function
+        windowPoints = new List<List<int>>();
+
+        List<List<int>> triangles = new List<List<int>>();
+
+        triangles.Add(new List<int>());
+        triangles.Add(new List<int>());
+        triangles.Add(new List<int>());
+
+        List<int> material0 = new List<int>();
+        List<int> material1 = new List<int>();
+        List<int> material2 = new List<int>();
+
+        //running through each list and assigning to lists depending on whcih material they should be
+        //materials are selected depending on which ring they are on and how far along the ring( e.g every 3rd vertice is a window)
+        for (int i = 0; i < extrudedRings.Count - 1; i ++)
+        {
+            int edgeCount = 0;
+            for (int j = 0; j < extrudedRings[i].Count - 1; j++)
+            {
+
+                
+                //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //c.transform.position = extrudedRings[i][j];
+                //c.transform.localScale *= 0.1f;
+                //c.name = "vertice round" + i.ToString() + " " + j.ToString(); ;
+                //Destroy(c, 3);
+                
+
+                int first = j + i * totalVertsInRing;
+                int second = j + 1 + i * totalVertsInRing;
+                int third = j + totalVertsInRing + (i * totalVertsInRing);
+                int fourth = j + 1 + totalVertsInRing + (i * totalVertsInRing);
+
+
+
+                //how many rings high are we? spacer, or panel, or window?
+                if (i < 2 || i > 7)
+                {
+                    //spacer
+                    //add all materials to spacer material
+                    material0.Add(first);
+                    material0.Add(second);
+                    material0.Add(third);
+
+                    material0.Add(third);
+                    material0.Add(second);
+                    material0.Add(fourth);
+
+
+                    continue;
+                }
+                else if (i != 4 && i != 5)
+                {
+                    //panel
+                    material1.Add(first);
+                    material1.Add(second);
+                    material1.Add(third);
+
+                    material1.Add(third);
+                    material1.Add(second);
+                    material1.Add(fourth);
+
+                    continue;
+                }
+                else
+                {
+                    //windows
+                    int count = 0;
+
+
+                    for (int a = 0; a < extrudedRings.Count; a++)
+                    {
+
+                        //add edge
+
+                        if (j >= count && j < extrudedRings[a].Count + count)
+                        {
+                            //Debug.Log("edge count = " + edgeCount);
+                            //figure out if we are at a window
+                            //6 vertices per window section (window plus frame)
+                            //plus move four points in gives us a window every 6 points starting at the fourth point
+                            if ((count - 4 - j) % 6 == 0)
+                            {
+                                //glass
+                                material2.Add(first);
+                                material2.Add(second);
+                                material2.Add(third);
+
+                                material2.Add(third);
+                                material2.Add(second);
+                                material2.Add(fourth);
+
+                                //save these points for windows
+                                List<int> windowPos = new List<int>() { first, second, third, fourth };
+                                windowPoints.Add(windowPos);
+                            }
+                            else
+                            //give to building material
+                            {
+                                material1.Add(first);
+                                material1.Add(second);
+                                material1.Add(third);
+
+                                material1.Add(third);
+                                material1.Add(second);
+                                material1.Add(fourth);
+                            }
+
+                            edgeCount++;
+                        }
+                        //keep a count of how many we added
+                        count += extrudedRings[a].Count;
+
+                    }
+                }
+            }
+
+        }
+
+
+        //now sort materials based on layer/ring type
+        int layerType = 0;
+        if (layerType == 0)
+        {
+            //all solid, all to first material
+
+            triangles[0].AddRange(material0);
+            triangles[1].AddRange(material1);
+            triangles[2].AddRange(material2);
+
+        }
+        if (layerType == 1)
+        {
+            //all spacer, to secondary material
+            triangles[1].AddRange(material0);
+            triangles[1].AddRange(material1);
+            triangles[1].AddRange(material2);
+
+        }
+        if (layerType == 2)
+        {
+
+            //with windows and main colour
+            triangles[0].AddRange(material0);
+            triangles[0].AddRange(material1);
+            triangles[2].AddRange(material2);
+
+        }
+
+
+        return triangles;
+
+    }
+
     GameObject WindowFrames(List<List<int>> windowPoints,List<Vector3> buildingVertices,GameObject parent)
     {
         
@@ -1598,7 +1886,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
     }
 
-    List<Vector3> Vertices(List<List<Vector3>> extrudedRings)
+    public List<Vector3> Vertices(List<List<Vector3>> extrudedRings)
     {
         List<Vector3> vertices = new List<Vector3>();
 
@@ -1613,7 +1901,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         return vertices;
     }
 
-    GameObject Storey(List<Vector3> vertices, List<List<int>> triangles)
+    public GameObject Storey(List<Vector3> vertices, List<List<int>> triangles)
     {
         GameObject storey = new GameObject();
         storey.name = "Storey";

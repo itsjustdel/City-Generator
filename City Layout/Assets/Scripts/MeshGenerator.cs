@@ -331,7 +331,7 @@ public class MeshGenerator : MonoBehaviour {
 
              RemoveSmallEdges();
 
-             ReMesh(true);//NEED - checks for clockwise
+             ReMesh(false);//NEED - checks for clockwise
             
             return;
 
@@ -469,14 +469,14 @@ public class MeshGenerator : MonoBehaviour {
                 Vector3 targetDir =  newVertices[0] - newVertices[j - 1];//to centre
                 if (AngleDir(fwd, targetDir, Vector3.up) < 0f)
                 {
-                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.name = "clock " + i.ToString();
-                    c.transform.position = newVertices[j];
+                   // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  //  c.name = "clock " + i.ToString();
+                 //   c.transform.position = newVertices[j];
 
                     Debug.DrawLine(newVertices[j], newVertices[j - 1]);
 
                     antiClockwise++;
-                    Debug.Break();
+                    //Debug.Break();
                 }
                 else
                     //cover for complex shapes? - not tested so far
@@ -1274,9 +1274,14 @@ public class MeshGenerator : MonoBehaviour {
                 List<GameObject> adjacents = cells[i].GetComponent<AdjacentCells>().adjacentCells;
                 for (int j = 0; j < adjacents.Count; j++)
                 {
-
-                    //loads of palletts this cell?
-                    PaletteInfo adjacentPI = adjacents[j].AddComponent<PaletteInfo>();
+                    PaletteInfo adjacentPI;
+                    if (adjacents[j].GetComponent<PaletteInfo>() == null)
+                    {
+                        //loads of palletts this cell?
+                        adjacentPI = adjacents[j].AddComponent<PaletteInfo>();
+                    }
+                    else
+                        adjacentPI = adjacents[j].GetComponent<PaletteInfo>();
 
                     //choose random harmony - or cluster colours by clamping to one  - or cluster to adjacent colours in the pallet (0,1,2) //or always contrast - last half of pallete
                     int randomHarmonyIndex = UnityEngine.Random.Range(0, palette.Count/2);//1;// UnityEngine.Random.Range(1, palette.Count);//start at 1 because 0 is main colour//UnityEngine.Random.Range(palette.Count/2, palette.Count )
