@@ -226,6 +226,227 @@ public class InteriorAssets : MonoBehaviour
         return wall;
     }
 
+
+    public static GameObject WindowFrames(List<int> windowIndexes, List<List<Vector3>> buildingVertices, GameObject parent,TraditionalSkyscraper tS)
+    {
+
+        //let's add all frames to one gameobject- will reduce draw calls and we will have better frames per second
+
+        GameObject window = new GameObject();
+        window.transform.parent = parent.transform;
+        window.name = "Windows";
+        MeshFilter meshFilter = window.AddComponent<MeshFilter>();
+        
+
+        Mesh mesh = new Mesh();
+        List<Vector3> vertices = new List<Vector3>();
+        List<int> triangles = new List<int>();
+
+        //create 
+
+        for (int i = 0; i < windowIndexes.Count; i+=2)
+        {
+                /*
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = buildingVertices[windowPoints[i][j]];
+                c.transform.localScale *= 0.1f;
+                c.name = i.ToString() + " " + j.ToString();
+                Destroy(c, 3);
+                */
+
+                
+
+                //front panel
+
+                Vector3 thisPoint = buildingVertices[3][windowIndexes[i]];
+                Vector3 next = buildingVertices[3][windowIndexes[i+1]];
+
+            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = thisPoint;
+            c.transform.localScale *= 0.1f;
+            c.name = "window0";
+
+            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = next;
+            c.transform.localScale *= 0.1f;
+            c.name = "window1";
+
+            // Vector3 nextNext = buildingVertices[windowPoints[i][nextNextIndex]];
+            //some directions we will need 
+            //extrude towards start
+
+            /*
+                Vector3 side = ((thisPoint - next).normalized);
+                Vector3 forward = Vector3.Cross(backwards, side);
+                //bottom of window
+
+
+                //extrude downards //and back //and forward
+                Vector3 p0 = thisPoint + forward * tS.windowFrameDepth;
+                Vector3 p1 = next + forward * tS.windowFrameDepth;
+                Vector3 p2 = thisPoint + side * tS.windowFrameSize + backwards * tS.windowFrameSize + forward * (tS.windowFrameDepth + tS.windowFrameDepthOuter);
+                Vector3 p3 = next + side * tS.windowFrameSize - backwards * tS.windowFrameSize + forward * (tS.windowFrameDepth + tS.windowFrameDepthOuter);
+
+                vertices.Add(p0);
+                vertices.Add(p1);
+                vertices.Add(p2);
+                vertices.Add(p3);
+
+                //a dirty way to add triangles
+
+                triangles.Add(vertices.Count - 2);
+                triangles.Add(vertices.Count - 3);
+                triangles.Add(vertices.Count - 4);
+
+                triangles.Add(vertices.Count - 1);
+                triangles.Add(vertices.Count - 3);
+                triangles.Add(vertices.Count - 2);
+
+                //outer depth
+                p0 = p2;
+                p1 = p3;
+                p2 = p0 - forward * (tS.windowFrameDepth + tS.windowFrameDepthOuter);
+                p3 = p1 - forward * (tS.windowFrameDepth + tS.windowFrameDepthOuter);
+
+                vertices.Add(p0);
+                vertices.Add(p1);
+                vertices.Add(p2);
+                vertices.Add(p3);
+
+                //a dirty way to add triangles                
+                triangles.Add(vertices.Count - 2);
+                triangles.Add(vertices.Count - 3);
+                triangles.Add(vertices.Count - 4);
+
+                triangles.Add(vertices.Count - 1);
+                triangles.Add(vertices.Count - 3);
+                triangles.Add(vertices.Count - 2);
+
+
+                //inner depth
+                p2 = thisPoint;
+                p3 = next;
+
+                vertices.Add(p0);
+                vertices.Add(p1);
+                vertices.Add(p2);
+                vertices.Add(p3);
+
+                //a dirty way to add triangles
+                //note - switched oreder
+                triangles.Add(vertices.Count - 2);
+                triangles.Add(vertices.Count - 4);
+                triangles.Add(vertices.Count - 3);
+
+                triangles.Add(vertices.Count - 3);
+                triangles.Add(vertices.Count - 1);
+                triangles.Add(vertices.Count - 2);
+
+
+            
+        */
+
+        }
+
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        meshFilter.mesh = mesh;
+
+        return window;
+
+    }
+
+    public static List<List<int>> TrianglesForExteriorWall(List<List<Vector3>> meshPoints,List<int> windowIndexes)
+    {
+        //triangles
+        List<List<int>> triangles = new List<List<int>>();
+        triangles.Add(new List<int>());
+        triangles.Add(new List<int>());
+        triangles.Add(new List<int>());
+
+        List<int> material0 = new List<int>();
+        List<int> material1 = new List<int>();
+        List<int> material2 = new List<int>();
+        for (int i = 0; i < meshPoints.Count - 1; i++)
+        {
+            for (int j = 0; j < meshPoints[i].Count-1; j++)//?working?, was +=2
+            {
+                //go!
+
+                int first = j + i * meshPoints[i].Count;
+                int second = j + 1 + i * meshPoints[i].Count;
+                int third = j + meshPoints[i].Count + (i * meshPoints[i].Count);
+                int fourth = j + 1 + meshPoints[i].Count + (i * meshPoints[i].Count);
+
+                if (i < 2 || i > 7)
+                {
+                    //spacer mat is 0
+                    material0.Add(first);
+                    material0.Add(second);
+                    material0.Add(third);
+
+                    material0.Add(third);
+                    material0.Add(second);
+                    material0.Add(fourth);
+                }
+                else if (i != 4 && i != 5)
+                {
+                    //main building mat is 1
+                    material1.Add(first);
+                    material1.Add(second);
+                    material1.Add(third);
+
+                    material1.Add(third);
+                    material1.Add(second);
+                    material1.Add(fourth);
+                }
+                else
+                {
+                    if (windowIndexes.Contains(j - 1) && windowIndexes.Contains(j + 1)) //not how i planned but it's working!
+                    {
+                        //window mat is 2
+                        material2.Add(first);
+                        material2.Add(second);
+                        material2.Add(third);
+
+                        material2.Add(third);
+                        material2.Add(second);
+                        material2.Add(fourth);
+                    }
+                    else
+
+                    {
+                        //main building mat is 1
+                        material1.Add(first);
+                        material1.Add(second);
+                        material1.Add(third);
+
+                        material1.Add(third);
+                        material1.Add(second);
+                        material1.Add(fourth);
+
+                    }
+                }
+
+                /*
+                 GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                  c.transform.position = meshPoints[i][j];
+                  c.name = "mesh";
+                  c.transform.localScale *= 0.2f;
+                  */
+
+
+            }
+        }
+
+        triangles[0].AddRange(material0);
+        triangles[1].AddRange(material1);
+        triangles[2].AddRange(material2);
+
+        return triangles;
+    }
     
     public static GameObject Wall(Vector3 p0, Vector3 p1,Vector3 p2, Vector3 p3,float height,TraditionalSkyscraper tS)
     {

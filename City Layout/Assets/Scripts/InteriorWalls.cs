@@ -463,8 +463,8 @@ public class InteriorWalls : MonoBehaviour
                     q.transform.position = tempList[i];
                     q.name = "ext first b";
 
-                    firstWallPoint = tempList[i];
-                    firstWallPointPrev = tempList[prev];
+                    firstWallPoint = tempList[next];
+                    firstWallPointPrev = tempList[i];
                 }
                 else if (containsPrev & containsThis && containsNext)
                 {
@@ -488,15 +488,19 @@ public class InteriorWalls : MonoBehaviour
         outerWallPoints.Insert(outerWallPoints.Count, lastWallPointNext);
 
         //remove any duplicates
-        outerWallPoints = outerWallPoints.Distinct().ToList();
+        outerWallPoints = outerWallPoints.Distinct().ToList(); //first and last can be same?
 
-        ExteriorWallInside(outerWallPoints, intersectStart, intersectEnd);
+        Debug.Log(outerWallPoints.Count);
+        if (outerWallPoints.Count > 1)
+        {
+            ExteriorWall(outerWallPoints, intersectStart, intersectEnd);
+        }
 
         for (int i = 0; i < outerWallPoints.Count; i++)
         {
-         //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-          //  c.transform.position= outerWallPoints[i];
-         //   c.name = "ordered p";
+            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position= outerWallPoints[i];
+            c.name = "ordered p";
         }
 
 
@@ -508,51 +512,91 @@ public class InteriorWalls : MonoBehaviour
         //check for door
         Bookend();
     }
-
-    void ExteriorWallInside(List<Vector3> outerWallPoints,Vector3 startIntersect,Vector3 endIntersect)
+    void ExteriorWall(List<Vector3> outerWallPoints, Vector3 startIntersect, Vector3 endIntersect)
     {
+        List<Vector3> pointsExterior = new List<Vector3>();
+        List<Vector3> pointsInterior = new List<Vector3>();
+        List<Vector3> miterDirections = new List<Vector3>();
 
-        List<Vector3> points = new List<Vector3>();        
-        Vector3 miter = Vector3.zero;
+        //make two list- points match each other, one runs on the inside, one on the outside
+        ParallelListsWithMiters(ref pointsInterior, ref pointsExterior,ref miterDirections, endIntersect,startIntersect, outerWallPoints);
 
-        //make list of miter poitns at wall width
-        points.Add(endIntersect);
-        for (int i = 1; i < outerWallPoints.Count-1; i++)//start at 1 and end at -1 because we just need those points to work out miters
-        {
-            miter =outerWallPoints[i] - Hallways.MiterDirection(outerWallPoints[i - 1], outerWallPoints[i], outerWallPoints[i + 1],exteriorWallThickness);
-            points.Add(miter);
-
-        }     
-        points.Add(startIntersect);
-
-        float minWindowSpace = (tS.windowSpaceX * 2) + tS.windowX;
+        
         //figure out where we can place windows
 
-        List<Vector3> pointsWithWindows = new List<Vector3>();
+        List<Vector3> pointsWithWindowsInterior = new List<Vector3>();
+        List<Vector3> pointsWithWindowsExterior = new List<Vector3>();
         //we will remember where we placed windows on each row
 
         List<int> windowIndexes = new List<int>();
 
-        for (int i = 0; i < points.Count-1; i++)
+        //add windows where there is enough space to do so
+        AddWindows(ref pointsWithWindowsInterior, ref pointsWithWindowsExterior, ref windowIndexes, pointsInterior, pointsExterior, miterDirections);
+
+
+        //interior
+        //now add heights to these points
+        List<List<Vector3>> meshPoints = tS.BuildHeightsForFloor(pointsWithWindowsInterior);
+        //we have an array of arrays with points in a grid now. make triangles and vertices now
+        //run nested list in to one list for mesh
+        List<Vector3> vertices = tS.Vertices(meshPoints);
+        List<List<int>> triangles = InteriorAssets.TrianglesForExteriorWall(meshPoints, windowIndexes);
+        GameObject interiorWall = WallOnOutside(vertices, triangles, true);
+        interiorWall.name = "Interior Outside";
+
+        //now for exterior
+        meshPoints = tS.BuildHeightsForFloor(pointsWithWindowsExterior);
+        //we have an array of arrays with points in a grid now. make triangles and vertices now
+        //run nested list in to one list for mesh
+        vertices = tS.Vertices(meshPoints);
+        triangles = InteriorAssets.TrianglesForExteriorWall(meshPoints, windowIndexes);
+
+        GameObject exteriorWall = WallOnOutside(vertices, triangles, false);
+        exteriorWall.name = "Exterior Outside";
+        /*
+        for (int i = 0; i < pointsWithWindowsInterior.Count; i++)
+        {
+            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = pointsWithWindowsInterior[i];
+            c.transform.name = "int";
+            c.transform.localScale *= 0.1f;
+
+            c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.transform.position = pointsWithWindowsExterior[i];
+            c.transform.name = "ext";
+            c.transform.localScale *= 0.1f;
+        }
+        */
+    }
+
+    void AddWindows(ref List<Vector3> pointsWithWindowsInterior, ref List<Vector3> pointsWithWindowsExterior, ref List<int> windowIndexes, List<Vector3> pointsInterior, List<Vector3> pointsExterior, List<Vector3> miterDirections)
+    {
+
+        float minWindowSpace = (tS.windowSpaceX * 2) + tS.windowX;
+
+        for (int i = 0; i < pointsInterior.Count - 1; i++)
         {
             //GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            //c.transform.position = points[i];
+            //c.transform.position = pointsInterior[i];
             // c.name = "inside";
 
-            float distanceToNext = Vector3.Distance(points[i], points[i + 1]);
-            Vector3 dirToNext = (points[i+1] - points[i]).normalized;
-            Vector3 halfPoint = Vector3.Lerp(points[i], points[i + 1], 0.5f);
-            GameObject c0 = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c0.transform.position = halfPoint;
-            c0.name = "half";
-            c0.transform.localScale *= 0.5f;
+            float distanceToNext = Vector3.Distance(pointsInterior[i], pointsInterior[i + 1]);
+            Vector3 dirToNext = (pointsInterior[i + 1] - pointsInterior[i]).normalized;
+            Vector3 halfPointInterior = Vector3.Lerp(pointsInterior[i], pointsInterior[i + 1], 0.5f);
+
+            Vector3 spun = miterDirections[i];//.normalized*exteriorWallThickness;// Quaternion.Euler(0, -90, 0) * dirToNext * exteriorWallThickness;
+            //GameObject c0 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //c0.transform.position = halfPoint;
+            //c0.name = "half";
+            //c0.transform.localScale *= 0.5f;
+
             if (distanceToNext > minWindowSpace)
             {
                 //first of all,. add our first point?
-                //pointsWithWindows.Add(points[i]);
+                //pointsWithWindows.Add(pointsInterior[i]);
 
                 //find out how many windows we can fit in
-                int windowsTotal = (int)( distanceToNext / minWindowSpace);
+                int windowsTotal = (int)(distanceToNext / minWindowSpace);
                 float step = distanceToNext / windowsTotal;
                 Debug.Log(windowsTotal);
 
@@ -570,16 +614,16 @@ public class InteriorWalls : MonoBehaviour
                             continue;//will be a doubler
 
                         //build frame half way across window X size
-                        Vector3 windowCentre = halfPoint + dirToUse * j;
+                        Vector3 windowCentreInterior = halfPointInterior + dirToUse * j;
                         //frame
-                        Vector3 framEdgeWindowSide0 = windowCentre + (dirToNext * tS.windowX * 0.5f);
-                        Vector3 framEdgeWindowSide1 = windowCentre - (dirToNext * tS.windowX * 0.5f);
+                        Vector3 frameEdgeWindowSide0 = windowCentreInterior + (dirToNext * tS.windowX * 0.5f);
+                        Vector3 frameEdgeWindowSide1 = windowCentreInterior - (dirToNext * tS.windowX * 0.5f);
                         //add frame width
-                        Vector3 frameEdgeNextFrameSide0 = framEdgeWindowSide0 + (dirToNext * tS.windowSpaceX);
-                        Vector3 frameEdgeNextFrameSide1 = framEdgeWindowSide1 - (dirToNext * tS.windowSpaceX);
+                        Vector3 frameEdgeNextFrameSide0 = frameEdgeWindowSide0 + (dirToNext * tS.windowSpaceX);
+                        Vector3 frameEdgeNextFrameSide1 = frameEdgeWindowSide1 - (dirToNext * tS.windowSpaceX);
 
                         //now build frame
-                        
+                        /*
                         GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                         c.transform.position = framEdgeWindowSide0;
                         c.name = "window fr0";
@@ -597,39 +641,50 @@ public class InteriorWalls : MonoBehaviour
                         c.transform.position = frameEdgeNextFrameSide1;
                         c.name = "window ff1";
                         c.transform.localScale *= 0.5f;
-
+                        */
                         List<Vector3> temps = new List<Vector3>()
                         {
                             frameEdgeNextFrameSide1,//,frameEdgeNextFrameSide1,
-                            framEdgeWindowSide1,framEdgeWindowSide1,
-                            framEdgeWindowSide0,framEdgeWindowSide0,
+                            frameEdgeWindowSide1,frameEdgeWindowSide1,
+                            frameEdgeWindowSide0,frameEdgeWindowSide0,
                             frameEdgeNextFrameSide0//, frameEdgeNextFrameSide0                            
 
 
                         };
 
-                      
+
 
                         tempsTemps.Add(temps);
                     }
+
+                    //switch order of windows so we start at the start, and the middle
+                    if (k == 1)
+                        tempsTemps.Reverse();
 
                     tempsTempsTemps.Add(tempsTemps);
 
                 }
                 //we want to reverse the firs half of the list, because we started fromt he middle and worked our way out
-                //this loop does this, afterwards it wil be inn order form points[i] to points[i+1]
-                pointsWithWindows.Add(points[i]);
-                bool first = true;//doube the first point
-                for (int j = tempsTempsTemps.Count-1; j >=0 ; j--)
+                //this loop does this, afterwards it wil be inn order form pointsInterior[i] to pointsInterior[i+1]
+
+                pointsWithWindowsInterior.Add(pointsInterior[i]);
+                //also add to exterior list as we go
+
+                pointsWithWindowsExterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1] + spun);
+                bool first = true;//doube the first points
+
+                for (int j = tempsTempsTemps.Count - 1; j >= 0; j--)
                 {
                     for (int k = 0; k < tempsTempsTemps[j].Count; k++)
                     {
                         for (int l = 0; l < tempsTempsTemps[j][k].Count; l++)
                         {
-                            pointsWithWindows.Add(tempsTempsTemps[j][k][l]);
+                            pointsWithWindowsInterior.Add(tempsTempsTemps[j][k][l]);
+                            pointsWithWindowsExterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1] + spun);
 
-                            //remember window points here..
-                            if(l==1 || l==3)
+
+                            //remember window pointsInterior here..
+                            if (l == 1 || l == 3)
                             {
                                 GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                                 c.transform.position = tempsTempsTemps[j][k][l];
@@ -637,12 +692,14 @@ public class InteriorWalls : MonoBehaviour
                                 c.transform.localScale *= 0.5f;
 
                                 //add to list which we will use to add window materials to 
-                                windowIndexes.Add(pointsWithWindows.Count - 1);
+                                windowIndexes.Add(pointsWithWindowsInterior.Count - 1);
                             }
 
                             if (first)
                             {
-                                pointsWithWindows.Add(tempsTempsTemps[j][k][l]);
+                                pointsWithWindowsInterior.Add(tempsTempsTemps[j][k][l]);
+                                pointsWithWindowsExterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1] + spun);
+
                                 first = false;
                             }
                         }
@@ -650,75 +707,152 @@ public class InteriorWalls : MonoBehaviour
                 }
 
                 //last - double the last
-                pointsWithWindows.Add(pointsWithWindows[pointsWithWindows.Count - 1]);
-                pointsWithWindows.Add(points[i+1]);
+                pointsWithWindowsInterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1]);
+                pointsWithWindowsExterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1] + spun);
+
+                pointsWithWindowsInterior.Add(pointsInterior[i + 1]);
+                pointsWithWindowsExterior.Add(pointsWithWindowsInterior[pointsWithWindowsInterior.Count - 1] + spun);
 
 
             }
             else
             {
-                //no window, just add unique points
-                pointsWithWindows.Add(points[i]);                
-                pointsWithWindows.Add(points[i + 1]);
+                //no window, just add unique pointsInterior and matching outers
+                pointsWithWindowsInterior.Add(pointsInterior[i]);
+                pointsWithWindowsExterior.Add(pointsExterior[i]);
+
+                pointsWithWindowsInterior.Add(pointsInterior[i + 1]);
+                pointsWithWindowsExterior.Add(pointsExterior[i + 1]);
+
             }
 
         }
+    }
 
-        for (int i = 0; i < pointsWithWindows.Count; i++)
+    void ParallelListsWithMiters(ref List<Vector3> pointsInterior,ref List<Vector3> pointsExterior,ref List<Vector3> miterDirections,Vector3 endIntersect,Vector3 startIntersect, List<Vector3> outerWallPoints)
+    {
+
+
+        Vector3 miter = Vector3.zero;
+
+        //make list of miter poitns at wall width
+        //pointsInterior.Add(endIntersect);
+       // pointsExterior.Add(outerWallPoints[1]);
+
+        for (int i = 1; i < outerWallPoints.Count - 1; i++)//start at 1 and end at -1 because we just need those pointsInterior to work out miters
         {
-            GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            c.transform.position = pointsWithWindows[i];
-            c.transform.name = "aa";
-        }
-
-
-        //now add heights to these points
-        List<List<Vector3>> meshPoints = tS.BuildHeightsForFloor(pointsWithWindows);
-        //we have an array of arrays with points in a grid now. make triangles and vertices now
-        //run nested list in to one list for mesh
-        List<Vector3> vertices = tS.Vertices(meshPoints);
-        //triangles
-        List<List<int>> triangles = new List<List<int>>();
-        for (int i = 0; i < meshPoints.Count; i++)
-        {
-            for (int j = 0; j < meshPoints[i].Count; j++)
+            Vector3 miterDir = Hallways.MiterDirection(outerWallPoints[i - 1], outerWallPoints[i], outerWallPoints[i + 1], exteriorWallThickness);
+            if(i == 1)
             {
+                //first miter is the intersect wall direction
+                miterDir = (outerWallPoints[i] - endIntersect);
+            }
 
+            miter = outerWallPoints[i] - miterDir;
 
-                //go!
+            /* needed?
+            //do a distance check to see if the miter point has snuck behind the next point-happens wehn pointsInterior are close to each other - only need to at start
+            if (i == 2) //other cases?
+            {
+                if (Vector3.Distance(pointsInterior[0], miter) < Vector3.Distance(pointsInterior[0], pointsInterior[1]))
+                {
+                    //use miter point
+                    pointsInterior[pointsInterior.Count - 1] = miter;
+                    pointsExterior[i-1] = outerWallPoints[i];
+                    Debug.Log("chopped edge at miter - too close");
+                }
+                else
+                {
+                    pointsInterior.Add(miter);
 
-               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-              //  c.transform.position = meshPoints[i][j];
-              //  c.name = "mesh";
-              //  c.transform.localScale *= 0.2f;
+                    //adding alongside so exterior and interior list match
+                    pointsExterior.Add(outerWallPoints[i]);
 
+                    miterDirections.Add(miterDir);
+                }
 
+            }
+            //else
+            */
+            {
+                pointsInterior.Add(miter);
 
+                //adding alongside so exterior and interior list match
+                pointsExterior.Add(outerWallPoints[i]);
+
+                miterDirections.Add(miterDir);
             }
         }
 
+
+        pointsInterior.Add(startIntersect);
+        pointsExterior.Add(outerWallPoints[outerWallPoints.Count - 2]);
+
+        miterDirections.Add(outerWallPoints[outerWallPoints.Count - 2] - startIntersect );//this never gets used?
+
+
+        Debug.Log("points interior count = " + pointsInterior.Count);
+        Debug.Log("ext count = " + pointsExterior.Count);
+
+        for (int i = 0; i < pointsExterior.Count; i++)
+        {
+          //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+          ///  c.transform.position = pointsExterior[i];
+          //  c.name = "exte";
+        }
+
+        for (int i = 0; i < pointsInterior.Count; i++)
+        {
+         //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        //    c.transform.position = pointsInterior[i];
+         //   c.name = "int";
+        }
+    }
+
+    GameObject WallOnOutside(List<Vector3> vertices,List<List<int>> triangles,bool forInterior)
+    {
         GameObject wall = new GameObject();
         MeshFilter meshFilter = wall.AddComponent<MeshFilter>();
         MeshRenderer meshRenderer = wall.AddComponent<MeshRenderer>();
-
-
-        meshRenderer.sharedMaterials = tS.materials ;
+        meshRenderer.sharedMaterials = tS.materials;
 
         Mesh mesh = new Mesh();
         mesh.vertices = vertices.ToArray();
-        mesh.subMeshCount = 3;
-        mesh.SetTriangles(triangles[0], 0);
-        mesh.SetTriangles(triangles[1], 1);
-        mesh.SetTriangles(triangles[2], 2);
+        if (!forInterior)
+        {
+            //set different mats
+            mesh.subMeshCount = 3;
+            mesh.SetTriangles(triangles[0], 0);
+            mesh.SetTriangles(triangles[1], 1);
+            mesh.SetTriangles(triangles[2], 2);
+        }
+        else//for interior
+        {
+            //set different mats
+            mesh.subMeshCount = 3;
+            triangles[0].Reverse();
+            triangles[1].Reverse();
+            triangles[2].Reverse();
+
+            mesh.SetTriangles(triangles[0], 0);//remove after floor and inside ceiling done?
+            mesh.SetTriangles(triangles[1], 1);
+            mesh.SetTriangles(triangles[2], 2);
+
+
+        }
+
         mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
 
         meshFilter.mesh = mesh;
 
-       
+
         //recentre mesh? // just adjust y atm
         wall.transform.position = new Vector3(wall.transform.position.x, transform.position.y, wall.transform.position.z);
         wall.transform.parent = transform;
 
+
+        return wall;
     }
 
     void BookendForFloor()
@@ -978,7 +1112,7 @@ public class InteriorWalls : MonoBehaviour
             Vector3 miter0 = Hallways.MiterDirection(y0Prev, y0This,y0Next, roomWallThickness);
 
             Vector3 intersectV3 = new Vector3(intersectV2.x, 0f, intersectV2.y);
-            Vector3 inside = intersectV3 - edgeDir.normalized * roomWallThickness;
+            Vector3 inside = intersectV3 + (y0NextNext - y0Next).normalized * roomWallThickness;
             GameObject wall = InteriorAssets.Wall(y0This, intersectV3, y0This - miter0, inside, floorHeight,tS);
 
 
