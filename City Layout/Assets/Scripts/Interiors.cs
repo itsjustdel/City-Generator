@@ -30,12 +30,26 @@ public class Interiors : MonoBehaviour
     
     int frames = 0;
 
+    public int roomsBuilt = 0;
+    public bool allRoomsBuilt = false;
     //used by children components to build halls
     public Vector3 doorEdgePos = Vector3.zero;
 
 
+    TraditionalSkyscraper tS;
+
     private void Start()
     {
+        if(iterations == 0)
+        {
+            tS = transform.parent.GetComponentInParent<TraditionalSkyscraper>();
+        }
+        else if(iterations == 1)
+        {
+            //5 x parent
+            tS = transform.parent.parent.parent.parent.GetComponentInParent<TraditionalSkyscraper>();
+        }
+            
         //
         CreateVoronoi();
 
@@ -67,6 +81,7 @@ public class Interiors : MonoBehaviour
 
         if(fullReset)
         {
+            apartmentDoorBuilt = false;
             ClearAndReset();
             fullReset = false;
         }
@@ -85,9 +100,6 @@ public class Interiors : MonoBehaviour
 
     public void CreateVoronoi()
     {
-
-        
-
 
         interiorObj = new GameObject();
         interiorObj.name = "Interior";
@@ -120,63 +132,7 @@ public class Interiors : MonoBehaviour
         Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
         int[] triangles = GetComponent<MeshFilter>().mesh.triangles;
         Vector3 zeroGameObj = new Vector3(gameObject.transform.position.x, 0f, gameObject.transform.position.z);
-        int count = 0;
-
-        // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        //  c.transform.position = zeroGameObj;
-        //  c.name = "zero g";
-
-
-        /* random
-        for (int a = 0; a < 100; a++)
-        {
-            //create a point with random angle from centre with a random distance(capped at bounds distance)
-            Vector3 randomV3 = transform.position + (Quaternion.Euler(0, Random.Range(0, 360), 0) * Vector3.right);// * Random.Range(0f, limit);//removinf range so all point are around middle
-           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-           // c.transform.position = randomV3;
-          //  c.name = "outside";
-            for (int j = 0; j < triangles.Length; j+=3)
-            {
-                Vector3 t0 = vertices[triangles[j]] + transform.position;//0 y will happen in v2 conversion
-                Vector3 t1 = vertices[triangles[j+1]] + transform.position;
-                Vector3 t2 = vertices[triangles[j+2]] + transform.position;
-
-                Vector3 q = new Vector3(randomV3.x, randomV3.z);
-                Vector3 q0 = new Vector2(t0.x, t0.z);
-                Vector3 q1 = new Vector2(t1.x, t1.z);
-                Vector3 q2 = new Vector2(t2.x, t2.z);
-
-                if(PointInTriangle(q,q0,q1,q2))
-                {
-                   // c.name = "Inside";
-                    //zero they before adding
-                    randomV3 = new Vector3(randomV3.x, 0f, randomV3.z);
-
-                   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    c.transform.position = randomV3 - zeroGameObj + transform.position;
-                    c.name = "tard point from tri";
-
-                    mg.yardPoints.Add(randomV3 - zeroGameObj);
-
-                    count++;
-
-                    if (count == cap)
-                    {
-                        //break from both loops
-                        a = 100;
-                        break;
-                    }
-
-                }
-            }
-
-            if(a == 99)
-            {
-                Debug.Log("No points inside floorplan for interior - hit safety");
-            }
-        }
-        */
-
+        
         //might need to change if we want more than a cluster of rooms(double halls in merged cell e.g)
         Vector3 boundsCentre = GetComponent<MeshRenderer>().bounds.center;
         boundsCentre = new Vector3(boundsCentre.x, 0f, boundsCentre.z);
@@ -191,25 +147,13 @@ public class Interiors : MonoBehaviour
 
         avg /= ringPoints.Count;
 
-      //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-       // c.transform.position = avg;// + transform.position - boundsCentre;
-       // c.name = "ring center";
-
-       // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-       // c.transform.position = boundsCentre;// + transform.position - boundsCentre;
-      //  c.name = "bounds center";
-
-
+     
 
         //spin round this
         int start = Random.Range(0, 360 / cap);
         for (int i = start; i < 360 + start; i+=360/cap)
         {
             Vector3 p0 = Quaternion.Euler(0,i,0)* Vector3.right;
-            
-
-            
-
             
 
             Vector3 p1 =p0 * 100;
@@ -233,70 +177,6 @@ public class Interiors : MonoBehaviour
             //c.name = "voronoi input";
         }
         
-
-        //add border points
-
-        /*
-        List<Vector3> ringPoints = cornerPoints;
-        //add halfway to ringpoints
-        List<Vector3> ringPointsHalfway = new List<Vector3>();
-        ringPointsHalfway.Add(ringPoints[0]);
-        for (int i = 1; i < ringPoints.Count; i++)
-        {
-            ringPointsHalfway.Add(Vector3.Lerp(ringPoints[i - 1], ringPoints[i], 0.5f));
-
-            ringPointsHalfway.Add(ringPoints[i]);
-        }
-        ringPointsHalfway.Add(Vector3.Lerp(ringPoints[0], ringPoints[ringPoints.Count - 1], 0.5f));
-
-        ringPoints = new List<Vector3>(ringPointsHalfway);
-
-        //float limit = 2;// (GetComponent<MeshRenderer>().bounds.extents.x + GetComponent<MeshRenderer>().bounds.extents.z) * .5f;
-        
-        for (int i = 0; i < ringPoints.Count; i++)
-        {
-            //0 that y co-ord
-            ringPoints[i] = new Vector3(ringPoints[i].x,0f,ringPoints[i].z);
-            Vector3 p = ringPoints[i] -zeroGameObj;
-
-            p.y = 0f;
-
-            
-
-            Vector3 dir = ringPoints[i] - zeroGameObj;
-
-           // mg.yardPoints.Add(p);
-           // mg.yardPoints.Add(p + dir);
-            mg.yardPoints.Add(p + dir* limit);//how big?
-            mg.yardPoints.Add(p + dir *limit*2);
-            //mg.yardPoints.Add(p - dir * 0.1f);
-            // mg.yardPoints.Add(p - dir * 0.2f);
-
-            //*** try and fit edge of voronoi pattern to edge of floor
-
-
-        }*/
-
-
-        for (int i = 0; i < 360; i+= 30)
-        {
-           // Vector3 p = Quaternion.Euler(0, i, 0) * Vector3.right * limit;
-            //mg.yardPoints.Add(p);
-           // mg.yardPoints.Add(p*1.1f);
-        }
-
-       // Destroy(c, 3);
-
-        for (int i = 0; i < mg.yardPoints.Count; i++)
-        {
-         //   c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-         //   c.transform.position = mg.yardPoints[i];// + interiorObj.transform.position;
-         //   c.transform.localScale *= 0.5f;
-            //Destroy(c, 3);
-        }
-
-        //mg.enabled = false;
-
         mg.minEdgeSize = hallWidth;
         mg.volume = Vector3.one * 1000;
         mg.lloydIterations = 1;//relax cells
@@ -317,12 +197,162 @@ public class Interiors : MonoBehaviour
         List<CellInfo> cellInfos = Intersects(interiorCells);
         //create rooms
         MakeCells(interiorCells, cellInfos);
-        //decide where door should go
-        
-       // doorEdgePos = DoorEdgePosition(targetPoints);
-        
+
+        if(iterations == 0)
+        {
+            for (int i = 0; i < areas.Count; i++)
+            {
+                //start hallways and build interior walls
+                areas[i].GetComponent<Hallways>().Start(); //starting when placed      
+
+                
+            }
+
+            BookEnds();
+        }
+
+        if (iterations == 1)
+        {
+
+            return;//tresting 0 atm
+            //create floor plans for individual apartments
+
+            for (int i = 0; i < areas.Count; i++)
+            {
+                //start hallways and build interior walls
+                areas[i].GetComponent<Hallways>().Start(); //starting when placed
+
+            }
+
+            BookEnds();
+
+        }
 
     }    
+
+    void BookEnds()
+    {
+
+        //now all hallways have been calculated, match up the missing points to fill in the gaps where the hallway was made
+        //we use these to build walls 
+        for (int i = 0; i < areas.Count; i++)
+        {
+            //hallways saved two lists of points, one for each type of intersection with the outer edge
+            //a wall will be made of type A and type B
+
+            //so let's find an A and a B which share a point
+            //the point on the lists where it interesects the outside building is the point we are looking for
+            //B is second last and A is second (because we save the interior hall point at the start and the end of the list so we can get the miter direction for the wall depth)
+            List<Vector3> listA = areas[i].GetComponent<Hallways>().bookendPoints[0];
+            if (listA.Count == 0)
+                continue;
+
+
+            for (int j = 0; j < areas.Count; j++)
+            {
+                //look in other areas
+                if (i == j)
+                    continue;
+
+                List<Vector3> wallPoints = new List<Vector3>();
+                List<Vector3> listB = areas[j].GetComponent<Hallways>().bookendPoints[1];
+
+                if (listB.Count == 0)
+                    continue;
+
+                if (listA[1] == listB[listB.Count - 2])
+                {
+                   
+
+                    //great, join these list together, start with b
+                    for (int a = 0; a < listB.Count - 1; a++)//dont' add last
+                    {
+                        wallPoints.Add(listB[a]);
+
+                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = listB[a];
+                        c.name = "adding B";
+                    }
+                    for (int a = 2; a < listA.Count; a++)//dont' add  first two, first point is miter and second B had)
+                    {
+                        wallPoints.Add(listA[a]);
+
+                        GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = listA[a];
+                        c.name = "adding A";
+                    }
+
+                    //we have everything we need to build a wall
+                    //we just need to add the miters 
+                    Vector3 miterDir = (listA[0] - listA[1]).normalized * tS.exteriorWallThickness;
+                    Vector3 endIntersect = listB[0] + miterDir;
+                    Vector3 startIntersect = wallPoints[wallPoints.Count - 1] + miterDir;
+
+                    wallPoints.Insert(0, endIntersect);
+                    wallPoints.Add(startIntersect);
+
+                    //send to build - NEED TO FIGURE OUT IF EXTERIOR WALL OR INTERIOR ROOM WALL - ALSO NEED TO DECIDE WHICH ONE IS FOR A DOOR*******
+                    if(iterations == 0)
+                    {
+                        //always exteriro wall on first iteration
+                        //shall we build a door? - could try and anchor doors to one side? Random just now (first point available
+                        //we will try to build a door on a flat wall first
+                        //check if we ahve already built a door too
+                        if (wallPoints.Count == 5  && !apartmentDoorBuilt)
+                        {
+                            //door frame
+                            bool flipped;
+                            Vector3 p0 = wallPoints[1];
+                            Vector3 p1 = p0 + (wallPoints[0] - wallPoints[1]).normalized * tS.exteriorWallThickness;
+                            Vector3 p2 = wallPoints[3];
+                            Vector3 p3 = p2 + (wallPoints[4] - wallPoints[3]).normalized * tS.exteriorWallThickness;
+                            Vector3 boundsCentre = tS.GetComponent<MeshRenderer>().bounds.center;
+                            GameObject doorFrame = InteriorAssets.ApartmentDoorFrame(out flipped, wallPoints[2],p0,p2,p1,p3,  tS, boundsCentre);
+                            doorFrame.AddComponent<MeshRenderer>().sharedMaterial = tS.materials[0];
+
+                            //recentre mesh? // just adjust y atm
+                            doorFrame.transform.position = new Vector3(0, transform.position.y,0);                            
+                            doorFrame.transform.parent = transform;
+                            
+
+                            //door
+
+                            GameObject door = InteriorAssets.ApartmentDoor(wallPoints[2], p0, tS.doorWidth, tS.doorHeight, tS.doorDepth, flipped);
+
+                            door.transform.position = new Vector3(wallPoints[2].x, transform.position.y, wallPoints[2].z) + (wallPoints[2] - wallPoints[1]).normalized * tS.doorWidth * .5f; ;
+                            door.transform.parent = transform;
+
+                            door.transform.GetChild(0).GetComponent<MeshRenderer>().sharedMaterial = tS.materials[1];
+
+                            apartmentDoorBuilt = true;
+
+                        }
+                        else
+                        {
+                             InteriorWalls.ExteriorWall(wallPoints, startIntersect, endIntersect, tS, transform);
+                        }
+                    }
+
+                    else if(iterations == 1)
+                    {
+                        //do exterior test before building
+                    }
+
+                }
+
+
+                for (int a = 0; a < wallPoints.Count; a++)
+                {
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = wallPoints[a];
+                    c.name = "wall point";
+                }
+
+
+            }
+        }
+    }
+
 
     List<CellInfo> Intersects(List<GameObject> cellsToSnip)
     {
@@ -800,26 +830,16 @@ public class Interiors : MonoBehaviour
                     Hallways hallways = area.AddComponent<Hallways>();
                     hallways.interiorsRingPoints = newPoints;
                     hallways.targetPoints = targetPoints;
-                    hallways.enabled = false;
+                    hallways.enabled = false;//will be triggered by interiors script
                     hallways.reCentreMesh = true;
                     hallways.iterations = iterations;
                     hallways.apartmentDoorPositions = doorPositions;
                     GetComponent<MeshRenderer>().enabled = false;
 
-                    //Apartment door needs done after hallways because miters are different from just hall width
-                    //use door positions list to cross reference intersects in hallways scripts to find 
-                    //what to do if two?
                 }
             }
         }
-
-
     }
-
-    
-
-    
-
 
     bool IsDoorExterior(Vector3 i)
     {
@@ -871,6 +891,7 @@ public class Interiors : MonoBehaviour
         interiors.cornerPoints = cornerPoints;
         interiors.corners = corners;
         interiors.hallWidth = hallWidth;
+        interiors.iterations = iterations;
 
         Destroy(interiorObj);
         Destroy(this);

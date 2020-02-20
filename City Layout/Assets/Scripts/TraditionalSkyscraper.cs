@@ -48,6 +48,13 @@ public class TraditionalSkyscraper : MonoBehaviour {
     public float curveAccuracyCorners = 5f;//can do 1 and make hex edge. 5 seems ok, more and we get more vertices- large performance cos(build time)
     private float curveStepSize = .5f;//not looked in to this for opto
 
+    public float roomWallThickness = .2f;
+    public float exteriorWallThickness = 0.4f;
+
+    public float doorWidth = 1f;//needs randomised
+    public float doorHeight = 1.8f;//needs randomised
+    public float doorDepth = 0.2f;//needs randomised
+
     public Material[] materials;//materials for main storey
     Material windowFrameMaterial;
 

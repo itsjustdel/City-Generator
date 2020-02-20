@@ -87,7 +87,7 @@ public class MeshGenerator : MonoBehaviour {
         GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
         standardMaterial = tempCube.GetComponent<MeshRenderer>().material;
         standardMaterial.SetFloat("_Metallic", 0.5f);
-        Destroy(tempCube);
+        DestroyImmediate(tempCube);
 
 
         tolerance = minEdgeSize;//testing

@@ -14,6 +14,10 @@ public class Hallways : MonoBehaviour
     List<Vector3> ringPoints = new List<Vector3>();
 
     public List<Vector3> apartmentDoorPositions = new List<Vector3>();
+
+    //saves two lists used to make walls for the end of halls - "bookends"
+    public List<List<Vector3>> bookendPoints = new List<List<Vector3>>();
+
     public float hallSize = 1f;
 
     public float wallDepth = 0.3f;
@@ -21,7 +25,7 @@ public class Hallways : MonoBehaviour
 
     // Start is called before the first frame update
     TraditionalSkyscraper tS;
-    void Start()
+    public void Start()
     {
         if(iterations == 0)
             tS = transform.parent.parent.parent.GetComponent<TraditionalSkyscraper>();
@@ -81,8 +85,10 @@ public class Hallways : MonoBehaviour
         List<Vector3> originalPositions = new List<Vector3>();
         //exteriors
         List<Vector3> exteriors = new List<Vector3>();
-        
-        
+        //we will store the points which get removed so we can build exteriro walls with them or bookends
+        List<Vector3> bookendPointsA = new List<Vector3>();
+        List<Vector3> bookendPointsB = new List<Vector3>();
+
         //make space for halls by pulling in vertices
         for (int i = 0; i < ringPoints.Count; i++)
         {
@@ -182,6 +188,31 @@ public class Hallways : MonoBehaviour
                 if (IntersectNext(out foundIntersect,out indexFoundAt,ringPoints,ref blockList, hallSize,prev,i,next,i,true,false,false))
                 {
                     tempList.Add(foundIntersect);
+
+                    //these are the points which we clipped - we still need them for the wall at the end of the hall
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = ringPoints[prev];
+                    c.name = "missing start 1 0 0";
+                    bookendPointsA.Add(ringPoints[prev]);
+                    for (int a = i; a <= indexFoundAt; a++)
+                    {
+                        int thisTemp = a;
+                        if (thisTemp > ringPoints.Count - 1)
+                            thisTemp -= ringPoints.Count;
+
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                         c.transform.position = ringPoints[thisTemp];
+                         c.name = "missing";
+
+                        bookendPointsA.Add(ringPoints[thisTemp]);
+                    }
+
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = foundIntersect;
+                    c.name = "missing end";
+                    bookendPointsA.Add(foundIntersect);
+
+
                     i = indexFoundAt;
 
                     //find door positions for exterior
@@ -231,6 +262,36 @@ public class Hallways : MonoBehaviour
                 int indexFoundAt = 0;
                 if (IntersectNext(out foundIntersect, out indexFoundAt, ringPoints, ref blockList, hallSize, prev, i, next, i, false, false,true))
                 {
+
+                    //these are the points which we clipped - we still need them for the wall at the end of the hall
+                    GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = foundIntersect;
+                    c.name = "missing start 0 0 1";
+                    bookendPointsB.Add(foundIntersect);
+
+                    for (int a = indexFoundAt+1; a <= ringPoints.Count + indexFoundAt; a++)
+                    {
+                        int thisTemp = a;
+                        if (thisTemp > ringPoints.Count-1)
+                            thisTemp -= ringPoints.Count;
+
+                        if (ringPoints[thisTemp] == ringPoints[next])
+                            break;
+
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = ringPoints[thisTemp];
+                        c.name = "missing";
+
+                        bookendPointsB.Add(ringPoints[thisTemp]);
+
+                    }
+
+                    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    c.transform.position = ringPoints[next];
+                    c.name = "missing end 0 0 1";
+                    bookendPointsB.Add(ringPoints[next]);
+
+
                     tempList.Add(foundIntersect);
 
                     if (!IsDoorExterior(i))
@@ -270,17 +331,27 @@ public class Hallways : MonoBehaviour
 
         }
 
+        //save points for end of halls - each hallways script will have one and interiors script will gather all these points together to build wals
+        bookendPoints = new List<List<Vector3>> { bookendPointsA, bookendPointsB };
 
+        //tidy up andy points that didn't amke it
         for (int i = tempList.Count-1; i >= 0; i--)
         {
             if(blockList.Contains( tempList[i]))
             {
+
+               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+               // c.transform.position = tempList[i];
+               // c.name = "Removed";
 
                 originalPositions.Remove(tempList[i]);//?
                 exteriors.Remove(tempList[i]);//?
                 tempList.RemoveAt(i);
             }
         }
+
+        
+
 
         if (tempList.Count > 3)
         {
@@ -306,7 +377,7 @@ public class Hallways : MonoBehaviour
                 interiors.cornerPoints = tempList;
                 interiors.corners = 3;
                 interiors.iterations = iterations + 1;
-                interiors.enabled = false;
+                //interiors.enabled = false;
 
                 GetComponent<MeshRenderer>().enabled = false;
             }
@@ -423,13 +494,19 @@ public class Hallways : MonoBehaviour
 
 
             //if(tempList.Contains(targetPoints[aa]))
-           // {
-             //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-             //   c.transform.position = ringPoints[aa];
-              //  c.name = "to remove";
+            // {
+            //   GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //   c.transform.position = ringPoints[aa];
+            //  c.name = "to remove";
 
-            if(addToBlock)
+           // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //   c.transform.position = ringPoints[aa];
+            //c.name = "to remove";
+
+            if (addToBlock)
                 blockList.Add(ringPoints[aa]);
+
+            
            // }
 
           //  Debug.DrawLine(p2, p3, Color.yellow);
@@ -443,9 +520,9 @@ public class Hallways : MonoBehaviour
             Vector2 tempV2 = Vector2.zero;
             if (LineSegmentsIntersection(a0, a1, a2, a3, out tempV2))
             {
-             //    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-              //  c.transform.position = new Vector3(tempV2.x,0f,tempV2.y);
-             //   c.name = "intersect b4 distance check";
+                // c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                //c.transform.position = new Vector3(tempV2.x,0f,tempV2.y);
+               // c.name = "intersect b4 distance check";
 
              //   Debug.DrawLine(p0, p1, Color.red);
              //   Debug.DrawLine(p2, p3, Color.cyan);
@@ -472,22 +549,6 @@ public class Hallways : MonoBehaviour
                 }
             }
         }
-        //force only adding 1
-        // if(foundTemp)
-        //     foundIntersects.Add(foundIntersect);
-
-
-        /*
-        //order intersecst by found
-        foundIntersects.Sort(delegate (Vector3 a, Vector3 b)
-        {
-            return Vector3.Distance(p2, a)
-            .CompareTo(
-              Vector3.Distance(p2, b));
-        });
-
-       // foundIntersects.Reverse();
-       */
 
         return foundTemp;
     }
@@ -567,7 +628,7 @@ public class Hallways : MonoBehaviour
         //apartment walls and door?
 
         if (iterations == 0)
-        {
+        {/*
 
             InteriorWalls iW = roomFloor.AddComponent<InteriorWalls>();
             iW.tempList = tempList;
@@ -577,16 +638,19 @@ public class Hallways : MonoBehaviour
             //iW.exteriors = targetPoints;
             //all walls will be built after
             iW.apartmentDoorOnly = true;
+            */
         }
 
-        if (iterations == 1)
+        if (iterations == 1)//back in
         {
+            
             InteriorWalls iW = roomFloor.AddComponent<InteriorWalls>();
             iW.tempList = tempList;
             iW.apartmentDoorPositions = apartmentDoorPositions;
             iW.tS = tS;
             iW.originalPositions = originalPositions;
             iW.exteriors = exteriors;
+            
         }
       
       
@@ -594,10 +658,6 @@ public class Hallways : MonoBehaviour
 
         return roomFloor;
     }
-
-    
-
-    
 
     //helper functions
     public static Vector3 MiterDirection(Vector3 p0, Vector3 p1, Vector3 p2, float borderSize)

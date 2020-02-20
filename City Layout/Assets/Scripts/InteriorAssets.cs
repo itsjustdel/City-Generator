@@ -9,6 +9,7 @@ public class InteriorAssets : MonoBehaviour
 
         //will hang on hinges for pivot
         GameObject parent = new GameObject();
+        parent.name = "Door Parent";
         
         GameObject door = GameObject.CreatePrimitive(PrimitiveType.Cube);
         door.transform.parent = parent.transform;
@@ -32,7 +33,7 @@ public class InteriorAssets : MonoBehaviour
         door.transform.position -= door.transform.right * doorWidth * .5f;
 
         if(flip)
-        door.transform.position -= door.transform.forward * doorDepth * .5f;
+            door.transform.position -= door.transform.forward * doorDepth * .5f;
         else
             door.transform.position += door.transform.forward * doorDepth * .5f;
 
@@ -47,7 +48,7 @@ public class InteriorAssets : MonoBehaviour
         
     }
 
-    public static GameObject ApartmentDoorFrame(out bool flip, Vector3 centre, Vector3 a0,Vector3 a1, Vector3 a2,Vector3 a3, float doorHeight, float doorWidth,float wallDepth, TraditionalSkyscraper tS,Vector3 boundsCentre)//,bool flipDir)
+    public static GameObject ApartmentDoorFrame(out bool flip, Vector3 centre, Vector3 a0,Vector3 a1, Vector3 a2,Vector3 a3, TraditionalSkyscraper tS,Vector3 boundsCentre)//,bool flipDir)
     {
         GameObject wall = new GameObject();
         wall.name = "Door Frame";
@@ -58,7 +59,7 @@ public class InteriorAssets : MonoBehaviour
         bool flipTemp = false;
 
         float angleDir = AngleDir((a2 - a3).normalized, (boundsCentre - centre).normalized, Vector3.up);
-        if (angleDir > 0)
+        if (angleDir < 0)
             flipTemp = true;
 
         //ax is bottom
@@ -73,14 +74,14 @@ public class InteriorAssets : MonoBehaviour
         Vector3 p3 = a3 + ceilingHeight * Vector3.up;
 
         //low
-        Vector3 door0Rear = centre + (a2 - a3).normalized * doorWidth*.5f;
+        Vector3 door0Rear = centre + (a2 - a3).normalized * tS.doorWidth*.5f;
         //inside high
-        Vector3 door1Rear = door0Rear + Vector3.up * doorHeight;
+        Vector3 door1Rear = door0Rear + Vector3.up * tS.doorHeight;
 
         //low other side
-        Vector3 door2Rear = centre - (a2 - a3).normalized * doorWidth * .5f;
+        Vector3 door2Rear = centre - (a2 - a3).normalized * tS.doorWidth * .5f;
         //high other side
-        Vector3 door3Rear = door2Rear + Vector3.up * doorHeight;
+        Vector3 door3Rear = door2Rear + Vector3.up * tS.doorHeight;
 
         //rear side
         
@@ -88,16 +89,16 @@ public class InteriorAssets : MonoBehaviour
         if (flipTemp)
             spin = -90;
 
-        Vector3 door0 = door0Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * wallDepth);//take direction then spin and multiply by wall depth
-        Vector3 door1 = door1Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * wallDepth);//take direction then spin and multiply by wall depth
-        Vector3 door2 = door2Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * wallDepth);//take direction then spin and multiply by wall depth
-        Vector3 door3 = door3Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * wallDepth);//take direction then spin and multiply by wall depth
+        Vector3 door0 = door0Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * tS.exteriorWallThickness);//take direction then spin and multiply by wall depth
+        Vector3 door1 = door1Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * tS.exteriorWallThickness);//take direction then spin and multiply by wall depth
+        Vector3 door2 = door2Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * tS.exteriorWallThickness);//take direction then spin and multiply by wall depth
+        Vector3 door3 = door3Rear + Quaternion.Euler(0, spin, 0) * ((a2 - a3).normalized * tS.exteriorWallThickness);//take direction then spin and multiply by wall depth
         
         /*
         GameObject    c = GameObject.CreatePrimitive(PrimitiveType.Cube);
             c.transform.position = centre;
             c.transform.localScale *= 0.5f;
-            c.name = "a0";
+            c.name = "centre 0";
 
         c = GameObject.CreatePrimitive(PrimitiveType.Cube);
         c.transform.position = a0;
@@ -116,8 +117,28 @@ public class InteriorAssets : MonoBehaviour
         c.transform.position = a3;
         c.transform.localScale *= 0.5f;
         c.name = "a3";
-        */
 
+
+        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = door0Rear;
+        c.transform.localScale *= 0.5f;
+        c.name = "door0rear";
+
+        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = door1Rear;
+        c.transform.localScale *= 0.5f;
+        c.name = "door 1 rear";
+        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = door2Rear;
+        c.transform.localScale *= 0.5f;
+        c.name = "door2rear";
+
+        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c.transform.position = door3Rear;
+        c.transform.localScale *= 0.5f;
+        c.name = "door 3 rear";
+
+        */
 
         //inner
         //from centre to edge multiplied by door width/2 gives us where the door finishes and thus where the frame begins
@@ -225,7 +246,6 @@ public class InteriorAssets : MonoBehaviour
         flip = flipTemp;
         return wall;
     }
-
 
     public static GameObject WindowFrames(List<int> windowIndexes, List<List<Vector3>> buildingVertices, GameObject parent,TraditionalSkyscraper tS)
     {
@@ -371,7 +391,7 @@ public class InteriorAssets : MonoBehaviour
         List<int> material2 = new List<int>();
         for (int i = 0; i < meshPoints.Count - 1; i++)
         {
-            for (int j = 0; j < meshPoints[i].Count-1; j++)//?working?, was +=2
+            for (int j = 0; j < meshPoints[i].Count-1; j+=2)//?working?, was +=2
             {
                 //go!
 
