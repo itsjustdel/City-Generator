@@ -219,6 +219,8 @@ public class Hallways : MonoBehaviour
                     if (!IsDoorExterior(i))
                     {
                         originalPositions.Add(ringPoints[i]);
+
+                        //exteriors.Add(foundIntersect);//ad this?
                     }
                     else
                     {
@@ -267,6 +269,13 @@ public class Hallways : MonoBehaviour
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = foundIntersect;
                     c.name = "missing start 0 0 1";
+
+                    //we need the starting point for the exterior wall****
+                    //use same method where we start at miter point and move towards prev edge?
+                    //it gets worked out in interiorWalls, pass it back or insert in to list when it is worked out?
+
+
+
                     bookendPointsB.Add(foundIntersect);
 
                     for (int a = indexFoundAt+1; a <= ringPoints.Count + indexFoundAt; a++)
@@ -296,11 +305,14 @@ public class Hallways : MonoBehaviour
 
                     if (!IsDoorExterior(i))
                     {
-                      //  GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                      //  c.transform.position = foundIntersect;
-                     //  c.name = "Interior 3";
+                        c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        c.transform.position = foundIntersect;
+                       c.name = "Interior 3";
 
                         originalPositions.Add(ringPoints[i]);
+
+                        
+                        //exteriors.Add(foundIntersect);
 
                        
                     }
@@ -332,6 +344,7 @@ public class Hallways : MonoBehaviour
         }
 
         //save points for end of halls - each hallways script will have one and interiors script will gather all these points together to build wals
+        
         bookendPoints = new List<List<Vector3>> { bookendPointsA, bookendPointsB };
 
         //tidy up andy points that didn't amke it
@@ -340,9 +353,9 @@ public class Hallways : MonoBehaviour
             if(blockList.Contains( tempList[i]))
             {
 
-               // GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-               // c.transform.position = tempList[i];
-               // c.name = "Removed";
+                GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.transform.position = tempList[i];
+                c.name = "Removed";
 
                 originalPositions.Remove(tempList[i]);//?
                 exteriors.Remove(tempList[i]);//?
@@ -377,16 +390,47 @@ public class Hallways : MonoBehaviour
                 interiors.cornerPoints = tempList;
                 interiors.corners = 3;
                 interiors.iterations = iterations + 1;
-                //interiors.enabled = false;
+               // interiors.enabled = false;
 
                 GetComponent<MeshRenderer>().enabled = false;
             }
         }
         else
         {
+            //todo, dont skip, we still need bookend points - run but don't build walls?
+
+            transform.name = "Skipped";
             Debug.Log("Room has less than 4 ring points");
             GetComponent<MeshRenderer>().enabled = false;
-            transform.name = "Skipped";
+
+
+            //copied from above
+            GameObject cell = Cell(tempList, originalPositions, exteriors);
+
+            //split up again?
+            if (iterations < 1)
+            {
+                Interiors interiors = cell.AddComponent<Interiors>();
+                //flatten
+                for (int i = 0; i < tempList.Count; i++)
+                {
+                    tempList[i] = new Vector3(tempList[i].x, 0f, tempList[i].z);
+                }
+                for (int i = 0; i < targetPoints.Count; i++)
+                {
+                    targetPoints[i] = new Vector3(targetPoints[i].x, 0f, targetPoints[i].z);
+                }
+
+                interiors.ringPoints = tempList;
+                interiors.targetPoints = hallPoints;
+                interiors.cornerPoints = tempList;
+                interiors.corners = 3;
+                interiors.iterations = iterations + 1;
+                // interiors.enabled = false;
+
+                GetComponent<MeshRenderer>().enabled = false;
+            }
+
         }
 
     }
@@ -462,7 +506,7 @@ public class Hallways : MonoBehaviour
         Vector3 p2 = ringPoints[i] - miter;
         Vector3 p3 = p2 + edgeDir;
 
-        Debug.DrawLine(p2, p3, Color.magenta);
+       // Debug.DrawLine(p2, p3, Color.magenta);
         Vector2 intersectV2 = Vector2.zero;
         
        // float distance = Mathf.Infinity;
