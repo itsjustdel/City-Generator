@@ -165,7 +165,10 @@ public class MeshGenerator : MonoBehaviour {
             GenSortedRandCells(ref points);
 
 
-           // if (count == 1)
+            
+
+
+            // if (count == 1)
             {
                 for (int i = 0; i < points.Length; i++)
                 {
@@ -184,7 +187,10 @@ public class MeshGenerator : MonoBehaviour {
            // dualGraph.ComputeForAllCells();
 
             dualGraph.PrepareCellsForMesh();
+
             
+
+
             //work out centroids for next iteration 
             for (int i = 0; i < dualGraph.cells.Count; i++)
             {
@@ -216,7 +222,9 @@ public class MeshGenerator : MonoBehaviour {
                 }
             }
 
-           
+            
+
+
 
             if (count == 0)
             {
@@ -251,6 +259,7 @@ public class MeshGenerator : MonoBehaviour {
             //cells = new List<GameObject>();
             GenerateMesh(dualGraph);
 
+
             CellMeshes();
             
 
@@ -258,14 +267,15 @@ public class MeshGenerator : MonoBehaviour {
 
            
         }
-        
-        //take small corners out to simplify the shape
-        Edges();        
 
+        //take small corners out to simplify the shape
+        Edges();
+
+        
         CalculateAdjacents();
        
         RemoveSmallEdges();//testing early in pipeline
-        ReMesh(true);
+        ReMesh(true); //enable renderer?
 
         SplitCells();
 
@@ -276,16 +286,14 @@ public class MeshGenerator : MonoBehaviour {
 
         if(cells.Count > 6)
          MergeCells();
-
+        
         
         //choose colours for each cell
         SetPalletes();
-
         
         //add ...
         AddToCells();
-                
-     //   yield break;
+
     }
 
     void SplitCells()
@@ -293,16 +301,10 @@ public class MeshGenerator : MonoBehaviour {
         //we can split some of the voronoi cells for smaller internal patterns
         List<GameObject> originalCells = new List<GameObject>(cells);
 
-
-        //we will split only one cell at the moment
-        //add one to the build list to get it going
-        //cellsToSplit.Add(cells[UnityEngine.Random.Range(0,cells.Count)]);
-
         for (int i = 0; i < cells.Count; i++)
         {
             cellsToSplit.Add(cells[i]);
-        }
-        
+        }        
 
         while (cellsToSplit.Count > 0)
         {
@@ -316,8 +318,6 @@ public class MeshGenerator : MonoBehaviour {
 
             Edges();
             CalculateAdjacents();
-
-            
         }
     }
 
@@ -327,8 +327,7 @@ public class MeshGenerator : MonoBehaviour {
         //merge some cells together
         int maxMerges = 1;
         for (int i = 0; i < maxMerges; i++)
-        {
-            
+        {           
         
             int r = UnityEngine.Random.Range(0, cells.Count);
 
@@ -432,9 +431,7 @@ public class MeshGenerator : MonoBehaviour {
              
             }
         }
-
     }
-
 
     void RemoveSmallEdges()
     {
@@ -617,21 +614,6 @@ public class MeshGenerator : MonoBehaviour {
 
             aJ.Edges();
         }
-
-        //now we have worked out all edges, find adjacent edges
-        for (int a = 0; a < cells.Count; a++)
-        {
-          //  cells[a].GetComponent<AdjacentCells>().FindSharedEdges(); //using?
-        }
-
-    }
-
-    void CallAdjacents()
-    {
-        for (int i = 0; i < cells.Count; i++)
-        {
-            cells[i].GetComponent<AdjacentCells>().FindSharedEdges();
-        }
     }
 
     float FindShortestEdgeDistance(DualGraph dualGraph)
@@ -695,85 +677,6 @@ public class MeshGenerator : MonoBehaviour {
         return shortestDistance;
     }
 
-
-
-    /// <summary>
-    /// Generates random cells.
-    /// </summary>
-    /// <param name="p">P.</param>
-    /// <summary>
-    /// Generates random cells.
-    /// </summary>
-    /// <param name="p">P.</param>
-    private void GenRandCells(ref Vector3[] p){		
-
-		List<Vector3> tempList = new List<Vector3>();
-
-	/*	for (int i = 0; i <gridPlayer.Path.Count;i++)
-		{
-			Vector3 position = gridPlayer.Path[i] - transform.position;
-			position.y = 0f;
-			tempList.Add(position);
-
-		}
-
-		for(int i=0; i<p.Length - gridPlayer.Path.Count; i++){
-
-			Vector3 position = new Vector3(UnityEngine.Random.Range(-volume.x,volume.x),0.0f,UnityEngine.Random.Range(-volume.z,volume.z));
-			tempList.Add(position);
-			//p[i]= new Vector3(Random.Range(-volume.x,volume.x),0.0f,Random.Range(-volume.z,volume.z));
-		}
-
-		p = tempList.ToArray();
-
-*/
-		if(fillWithPoints)
-		{
-			//cellNumber = yardPoints.Count;
-			
-			for(int i = 0; i < yardPoints.Count; i++)
-			{					
-				tempList.Add(yardPoints[i]);
-			}
-
-			p = tempList.ToArray();
-		}
-	}
-
-    private void AddCentroids(ref Vector3[] p,List<Vector3> centroids)
-    {
-
-        List<Vector3> tempList = new List<Vector3>();
-
-        /*	for (int i = 0; i <gridPlayer.Path.Count;i++)
-            {
-                Vector3 position = gridPlayer.Path[i] - transform.position;
-                position.y = 0f;
-                tempList.Add(position);
-
-            }
-
-            for(int i=0; i<p.Length - gridPlayer.Path.Count; i++){
-
-                Vector3 position = new Vector3(UnityEngine.Random.Range(-volume.x,volume.x),0.0f,UnityEngine.Random.Range(-volume.z,volume.z));
-                tempList.Add(position);
-                //p[i]= new Vector3(Random.Range(-volume.x,volume.x),0.0f,Random.Range(-volume.z,volume.z));
-            }
-
-            p = tempList.ToArray();
-
-    */
-            //cellNumber = yardPoints.Count;
-
-            for (int i = 0; i < centroids.Count; i++)
-            {
-                tempList.Add(centroids[i]);
-            }
-
-            p = tempList.ToArray();
-        
-    }
-
     /// <summary>
     /// Generates random cells, sorted by x value.
     /// </summary>
@@ -781,8 +684,6 @@ public class MeshGenerator : MonoBehaviour {
     //Note about sorting: using a sorted list requires the x values to always be different
     private void GenSortedRandCells(ref Vector3[] points){
 		SortedList<float, Vector3> p= new SortedList<float,Vector3>();
-
-
 
 		//adds random values for the rest
 		if(fillWithRandom)
@@ -821,15 +722,15 @@ public class MeshGenerator : MonoBehaviour {
 			p.Values.CopyTo(points,0);
 		}
 	}
+
 	/// <summary>
 	/// Generates the mesh.
 	/// </summary>
 	void GenerateMesh(DualGraph dualGraph)
     {
-    //    Debug.Log("prepare cells for mesh start");
+
         dualGraph.PrepareCellsForMesh();
-        //yield return new WaitForEndOfFrame();
-     //   Debug.Log("prepare cells for mesh end");
+
 		if (graphMesh==null){
 			graphMesh= new Mesh();
 			graphMesh.name= "Graph Mesh";
@@ -842,22 +743,8 @@ public class MeshGenerator : MonoBehaviour {
         meshVerts.Clear();
         meshTris.Clear();
 
-	//	List<Vector3> vert= new List<Vector3>();
-	//	List<Vector2> uvs= new List<Vector2>();
-	//	List<int> tris= new List<int>();
-	//	int vertCount=0;
-
-	//	foreach(Cell c in dualGraph.cells)
-     //   {
         for(int i = 0; i < dualGraph.cells.Count; i++)
         {
-            //bottleneck protection
-           // if(i!=0 && i % 100 == 0)
-            //    yield return new WaitForEndOfFrame();
-
-
-
-
             List<Vector3> vert= new List<Vector3>();
 			List<Vector2> uvs= new List<Vector2>();
 			List<int> tris= new List<int>();
@@ -899,28 +786,15 @@ public class MeshGenerator : MonoBehaviour {
 			//Check for empty meshes and skip
 			if (vert.Count == 0) continue;
 
-			///Export to individual GameObject
-		//	GameObject cell = new GameObject();
-
-            
-            //add mesh info to lists to crate mesh in a coroutine and drip feed in to unity
-            //Mesh mesh = new Mesh();
-		//	mesh.vertices = vert.ToArray();
-        //    mesh.triangles = tris.ToArray();
-          
             meshVerts.Add(vert.ToArray());
-            meshTris.Add(tris.ToArray());       
-    
-            
-		}
+            meshTris.Add(tris.ToArray());
 
-        //StartCoroutine("AddToCells");
-
-       
+        }
     }
 
     void CellMeshes()
     {
+
         for (int i = 0; i < meshVerts.Count; i++)
         {
             if (meshVerts.Count == 0)
@@ -946,7 +820,8 @@ public class MeshGenerator : MonoBehaviour {
 
 
             MeshRenderer meshRenderer = cell.AddComponent<MeshRenderer>();
-            meshRenderer.enabled = false;
+            
+            //    meshRenderer.enabled = false;
 
 
             meshRenderer.sharedMaterial = Resources.Load("Ground") as Material;
@@ -963,6 +838,8 @@ public class MeshGenerator : MonoBehaviour {
 
 
         }
+
+        return;
     }
 
     void AddToCells()
@@ -977,10 +854,12 @@ public class MeshGenerator : MonoBehaviour {
             {
 
                 cells[i].AddComponent<TraditionalSkyscraper>();
+                cells[i].GetComponent<TraditionalSkyscraper>().drawLocalSplines = true;
 
                 //add to build control list
                 GetComponent<BuildControl>().cells.Add(cells[i]);
-                //  cell.GetComponent<MeshRenderer>().enabled = false;
+                
+
 
 
             }

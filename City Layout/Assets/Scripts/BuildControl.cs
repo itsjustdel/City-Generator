@@ -102,7 +102,7 @@ public class BuildControl : MonoBehaviour {
             }
 
         }
-        else if(soloBuildings)
+        else if(soloBuildings)//not working
         {
             //shows one cell at a time, deletes and moves on
 

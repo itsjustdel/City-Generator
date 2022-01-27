@@ -79,17 +79,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
     int contantSpacerIndex = 0;
     bool darkSpacers = false;
 
-    bool upwardsSequentialBuilding = false;
-    bool downwardsSequentialBuilding = false;
-    bool randomBuildingMaterial = false;
-
-    bool upwardsSequentialWindows = false;
-    bool downwardsSequentialWindows = false;
-    bool randomWindowMaterial = false;
-
     int sequentialSpacerCounter = 0;
-    int sequentialBuildingCounter = 0;
-    int sequentialWindowsCounter = 0;
 
     bool inAndOutSpacer = false;//dont reset counter when finished, flip it so colours smoothly oscilate
     //building
@@ -104,23 +94,18 @@ public class TraditionalSkyscraper : MonoBehaviour {
     private void Awake()
     {
         //enabled form build script
-        this.enabled = false;
+        enabled = false;
     }
 
     void Start ()
     {
        
-
-
         //grab material holding class on gameobject
         pI = GetComponent<PaletteInfo>();
 
         lastHeightFound = 0f;
 
         StopAllCoroutines();
-
-        //if(materials == null)
-        //    LoadMaterials();
 
         MaterialPatterns();
 
@@ -195,17 +180,14 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
     }
 
-
-
     void ValuesBuildingShape()
     {
         randoms.Clear();
         randomsHeight.Clear();
-
         //general building shape
 
-        //height = 
         Height();
+
         floorHeight = Random.Range(2f, 3.5f);
         spacerHeight = Random.Range(0f, 0.2f);
         //choose a side to sculpt with more random detail
@@ -213,9 +195,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
         
-
-        
-      //  bool allRandom = Random.value >= 0.5f;
         //make staright side type common
         bool straight = Random.value >= 0.8f;//straight is alright but a bit boring
 
@@ -235,12 +214,12 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         bool carveOnlyOneSide = Random.value > 0.5f;
         int randomSide = Random.Range(1, vertices.Length);
-        //overrdies
-        if (spin)//is this straight bool?
+        //overides
+        if (spin)
         {
             //add spins
             //leavin spin0 at 0
-            spinAmount1 = Random.Range(0f,1f );//probably enough, crazy spins just dont look very good
+            spinAmount1 = Random.Range(0f, 1f);//probably enough, crazy spins just dont look very good
             spinAmount1 *= 360; //multiply here because it gets divided by vertice magnitude when spinning
             //match spin or keep spinning, or reverse?
             float r = Random.value;
@@ -259,17 +238,14 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 //do a crazy one
                 spinAmount2 = Random.Range(0, 720);
             }
-          
-
         }
         else
         {
-            spinAmount0 = 0f;  //Random.Range(0f, 1f);
-            spinAmount1 = 0f; //Random.Range(0f, 1f);
-            spinAmount2 = 0f;// Random.Range(0f, 1f);
+            spinAmount0 = 0f;
+            spinAmount1 = 0f;
+            spinAmount2 = 0f;
         }
         
-
         float straightScaler = Random.Range(0.1f, 0.5f);//how to decide this?
         
         for (int i = 1; i < vertices.Length; i++)
@@ -320,46 +296,15 @@ public class TraditionalSkyscraper : MonoBehaviour {
             }
 
             List<float> temp = new List<float> { random1, random2, random3 };
-            //scale randoms by max pavement size
-            //float max = distances[i - 1];// Mathf.Sqrt( GetComponent<MeshRenderer>().bounds.size.magnitude );//testing //use intersect point across with miter dir( halved )
-            
-            //for (int f =0; f < temp.Count;f++)
-              //  temp[f] *= max;
 
             randoms.Add(temp);
         }
 
-
-
-        //windows and corners
-
     
-    }
-    bool AreABCOneTheSameLine(Vector3 A, Vector3 B, Vector3 C)
-    {
-        return Mathf.Approximately(
-            Vector3.Project(A - B, A - C).magnitude,
-            (A - B).magnitude
-        );
-    }
-
-    float DistanceLineSegmentPoint(Vector3 a, Vector3 b, Vector3 p)
-    {
-        // If a == b line segment is a point and will cause a divide by zero in the line segment test.
-        // Instead return distance from a
-        if (a == b)
-            return Vector3.Distance(a, p);
-
-        // Line segment to point distance equation
-        Vector3 ba = b - a;
-        Vector3 pa = a - p;
-        return (pa - ba * (Vector3.Dot(pa, ba) / Vector3.Dot(ba, ba))).magnitude;
     }
 
     void ValuesWindows()
     {
-
-
         uniformCorners = Random.value >= 0.5f;
  
         cornerScaler = Random.Range(0f, 1f);
@@ -376,7 +321,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
         windowBottomPanelHeight = Random.Range(0f, .5f);
         windowTopPanelHeight = 1f- spacerHeight;// forcing to spacer height, just doesn't look good with dropped height //old Random.Range(0.66f, 1f);
-
 
         if (windowSpaceX < windowFrameSize)
             windowSpaceX = windowFrameSize;
@@ -451,18 +395,14 @@ public class TraditionalSkyscraper : MonoBehaviour {
         
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
-
-         AdjacentCells aJ = GetComponent<AdjacentCells>(); //going back to vertices[0] - but for original cell
+            
         //use to find where to lerp to, saved as were we merging cells
         List<GameObject> previousCells = null;
 
         if(GetComponent<MergeCell>() != null)
             previousCells = GetComponent<MergeCell>().previousCells;
 
-
-       // List<float> distances = new List<float>();
         List<Vector3> directions = new List<Vector3>();
-
 
         Vector3[] originalVerticesThis = GetComponent<ExtrudeCell>().originalMesh.vertices;
 
@@ -472,8 +412,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
         {
             for (int i = 1; i < vertices.Length; i++)
             {
-              //  distanceToCenter = Vector3.Distance(vertices[i], vertices[0]);
-
                 Vector3 newCenter = (vertices[i] - vertices[0]).normalized * minBuildWidth;//min edge var?
                 directions.Add(newCenter - vertices[i]);
 
@@ -489,6 +427,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                  
                         Debug.DrawLine(transform.position + vertices[i], transform.position + vertices[i] + directions[directions.Count-1], Color.cyan);
                 }
+             
             }
         }
         else
@@ -754,7 +693,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
             //find corner points at height defined by i
             //to do this we need to step up curve in small incrementtts until y height is satisfied
             
-            float step = 1f / segments;
+            float step = 1f / segments;//quite innacurate on this!
             for (float k = lastHeightFound; k < segments; k += step)
             {
                 Vector3 p = splines[j].GetPoint(k);
@@ -821,10 +760,9 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     break;
                 }
             }
+
+
         }
-
-        
-
         return cornerPoints;
     }
 
@@ -948,7 +886,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = ringPoints[a][b];
                     c.transform.localScale *= 0.1f;
-                    Destroy(c, 3);
+                   // Destroy(c, 3);
                 }
             }
         }
@@ -1242,7 +1180,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                     GameObject c = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     c.transform.position = extrudedRings[i][j];
                     c.transform.localScale *= 0.1f;
-                    Destroy(c, 3);
+                   // Destroy(c, 3);
                 }
             }
         }
@@ -1545,11 +1483,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
                 triangles.Add(vertices.Count - 3);
                 triangles.Add(vertices.Count - 1);
                 triangles.Add(vertices.Count - 2);
-
-                
             }
-           
-
         }
 
         mesh.vertices = vertices.ToArray();
@@ -1606,12 +1540,8 @@ public class TraditionalSkyscraper : MonoBehaviour {
 
     Material[] ChooseMaterials()
     {
-
-        Material[] materials = new Material[3];
-                
+        Material[] materials = new Material[3];                
         Material glass = Resources.Load("Glass") as Material;
-     
-
 
         materials[0] = SpacerMaterial();
         materials[1] = BuildingMaterial();
@@ -1704,21 +1634,13 @@ public class TraditionalSkyscraper : MonoBehaviour {
         else
             buildingMat = pI.palette[0].tints[buildingShadeIndex];
 
-        //random
-        //buildingMat = pI.palette[0].shades[Random.Range(0, pI.palette[0].tints.Count - 1)];
-        //main
-        //buildingMat = pI.palette[0].material;
 
         return buildingMat;
     }
 
     Material WindowFrameMaterial()
     {
-        Material windowMat = null;
-
-
-        windowMat = windowFrameMaterial;// pI.palette[0].shades[Random.Range( 0,pI.palette[0].shades.Count-1)];
-
+        Material windowMat = windowFrameMaterial;
 
         return windowMat;
     }
@@ -1749,10 +1671,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
         }
         //remove final loop point - triangulation algorithm doesn't want duplicates
         ringPoints.RemoveAt(ringPoints.Count - 1);
-        //debug checks
-        //Debug.Log(ringPoints.Count);
-        //ringPoints =  ringPoints.Distinct().ToList();//can use just to be safe
-        //Debug.Log(ringPoints.Count + " a");
 
         bool flip = false;
         GameObject roof = TriangulateRing(ringPoints, flip);
@@ -1816,8 +1734,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
         
     }
 
-   
-
     void Height()
     {
         //work out height depending on closeness to centre
@@ -1833,8 +1749,6 @@ public class TraditionalSkyscraper : MonoBehaviour {
         //make less linear
         totalHeight = 50f;//test
         totalHeight *= Random.Range(.5f, 1f);
-
-        
     }
 
     float inExp(float x)
@@ -1843,6 +1757,7 @@ public class TraditionalSkyscraper : MonoBehaviour {
         if (x > 1.0f) return 1.0f;
         return Mathf.Pow(2.0f, 10.0f * (x - 1.0f));
     }
+
     //Calculate the intersection point of two lines. Returns true if lines intersect, otherwise false.
     //Note that in 3d, two lines do not intersect most of the time. So if the two lines are not in the 
     //same plane, use ClosestPointsOnTwoLines() instead.
@@ -1868,5 +1783,4 @@ public class TraditionalSkyscraper : MonoBehaviour {
             return false;
         }
     }
-
 }
