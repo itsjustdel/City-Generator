@@ -4,6 +4,7 @@
 # City Generator
 Procedurally generated cityscape using Voronoi patterns to define street layouts and a combination of algorithms and curves to randomly define the building meshes. Also features procedural colour palettes to harmonise and contrast using colour theory. All assets created at runtime.
 
+I have written [an article](https://www.linkedin.com/pulse/how-i-created-procedural-city-derek-reid/?trackingId=kuk2Tr6sv40bZH3%2BAthJ1Q%3D%3D) describing the steps in more detail. 
 
 ## Demo
 https://dellywelly.itch.io/city-generator
